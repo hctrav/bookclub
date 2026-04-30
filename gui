@@ -1,0 +1,1267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Book Club</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg2: #f5f4f0; --bg3: #eeedea;
+  --text: #1a1a18; --text2: #6b6b66; --text3: #9b9b96;
+  --border: rgba(0,0,0,0.1); --border2: rgba(0,0,0,0.2);
+  --radius: 8px; --radius-lg: 12px;
+  --amber: #EF9F27; --amber-bg: #FAEEDA; --amber-text: #854F0B;
+  --red-bg: #FCEBEB; --red-text: #A32D2D;
+  --purple-bg: #EEEDFE; --purple-text: #534AB7; --purple: #7F77DD;
+  --green-bg: #EAF3DE; --green-text: #3B6D11; --green: #639922;
+  --blue: #378ADD; --teal: #1D9E75; --coral: #D85A30;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a; --bg2: #252523; --bg3: #2e2e2b;
+    --text: #f0efe8; --text2: #a0a09a; --text3: #6a6a64;
+    --border: rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.2);
+  }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+.shell { max-width: 760px; margin: 0 auto; padding: 2rem 1rem 5rem; }
+h1 { font-size: 22px; font-weight: 500; margin-bottom: 0.2rem; }
+.subtitle { font-size: 13px; color: var(--text2); margin-bottom: 1.75rem; }
+
+/* tabs */
+.tab-bar { display: flex; gap: 0; border-bottom: 0.5px solid var(--border); margin-bottom: 1.5rem; }
+.tab-btn { padding: 8px 20px; font-size: 14px; font-weight: 500; background: none; border: none; border-bottom: 2px solid transparent; color: var(--text2); cursor: pointer; white-space: nowrap; }
+.tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+.tab-btn:hover:not(.active) { color: var(--text); }
+.tab { display: none; }
+.tab.active { display: block; }
+
+/* forms */
+input[type=text] { background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 8px 12px; font-size: 14px; color: var(--text); outline: none; }
+input[type=text]:focus { border-color: var(--text2); }
+.btn { background: var(--text); color: var(--bg); border: none; padding: 9px 20px; border-radius: var(--radius); font-size: 14px; font-weight: 500; cursor: pointer; }
+.btn:hover { opacity: 0.82; }
+.btn:disabled { opacity: 0.35; cursor: default; }
+.btn-sm { padding: 7px 14px; font-size: 13px; }
+.ghost-btn { background: none; border: 0.5px solid var(--border2); color: var(--text2); padding: 4px 10px; border-radius: var(--radius); font-size: 12px; cursor: pointer; }
+.ghost-btn:hover { background: var(--bg2); color: var(--text); }
+
+/* chips */
+.chips-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
+.chip { display: inline-flex; align-items: center; padding: 4px 14px; border-radius: 20px; border: 0.5px solid var(--border2); font-size: 13px; font-weight: 500; cursor: pointer; background: var(--bg2); color: var(--text); }
+.chip:hover { background: var(--bg3); }
+.chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* survey */
+.name-row { display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; }
+.name-row input { flex: 1; max-width: 200px; }
+.note { font-size: 13px; color: var(--text2); margin-bottom: 1.25rem; }
+.book-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.book-row:last-child { border-bottom: none; }
+.book-cover { width: 36px; height: 52px; object-fit: cover; border-radius: 3px; background: var(--bg2); flex-shrink: 0; }
+.book-cover-placeholder { width: 36px; height: 52px; border-radius: 3px; background: var(--bg2); flex-shrink: 0; }
+.book-info { flex: 1; min-width: 0; }
+.book-title { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.book-meta { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.stars { display: flex; gap: 3px; }
+.star { font-size: 22px; cursor: pointer; color: var(--border2); user-select: none; line-height: 1; }
+.star.lit { color: var(--amber); }
+.survey-footer { margin-top: 1.25rem; }
+.status { font-size: 13px; margin-top: 8px; min-height: 18px; }
+.ok { color: var(--green); } .err { color: #A32D2D; }
+
+/* dashboard stats */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.stat-card { background: var(--bg2); border-radius: var(--radius); padding: 12px 14px; }
+.stat-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.stat-val { font-size: 22px; font-weight: 500; }
+
+/* awards */
+.award-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1.5rem; }
+.award-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 14px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 9px; border-radius: var(--radius); margin-bottom: 8px; }
+.award-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.award-sub { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+.award-score { font-size: 20px; font-weight: 500; }
+
+/* members */
+.user-bar { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.user-bar:last-child { border-bottom: none; }
+.avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+.critic-badge { font-size: 10px; padding: 2px 7px; border-radius: var(--radius); margin-left: 6px; background: var(--red-bg); color: var(--red-text); }
+.champ-badge { font-size: 10px; padding: 2px 7px; border-radius: var(--radius); margin-left: 6px; background: var(--amber-bg); color: var(--amber-text); }
+
+/* bars */
+.rbar-wrap { margin-bottom: 7px; }
+.rbar-label { font-size: 12px; color: var(--text2); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; display: inline-block; }
+.rbar-row { display: flex; align-items: center; gap: 8px; }
+.rbar { height: 10px; border-radius: 5px; min-width: 2px; }
+.rbar-val { font-size: 12px; color: var(--text2); min-width: 34px; }
+
+/* book cards for viz */
+.book-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+.book-card { display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: default; }
+.book-card img { width: 80px; height: 116px; object-fit: cover; border-radius: 4px; background: var(--bg2); }
+.book-card-title { font-size: 11px; text-align: center; color: var(--text2); line-height: 1.3; max-width: 90px; }
+
+/* section */
+.section-head { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 10px; margin-top: 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+.no-data { font-size: 13px; color: var(--text3); padding: 2rem 0; text-align: center; }
+.spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--border2); border-top-color: var(--text); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading { font-size: 13px; color: var(--text2); padding: 1.5rem 0; text-align: center; }
+.chart-wrap { position: relative; width: 100%; }
+.divider { border: none; border-top: 0.5px solid var(--border); margin: 1.5rem 0; }
+
+/* tooltip */
+.tooltip { position: fixed; background: var(--text); color: var(--bg); font-size: 12px; padding: 6px 10px; border-radius: var(--radius); pointer-events: none; z-index: 999; display: none; max-width: 200px; line-height: 1.4; }
+
+/* heatmap */
+.heatmap-wrap { overflow-x: auto; }
+.heatmap { border-collapse: collapse; font-size: 12px; }
+.heatmap th { padding: 4px 8px; color: var(--text2); font-weight: 500; text-align: center; white-space: nowrap; }
+.heatmap td { width: 44px; height: 36px; text-align: center; font-size: 12px; font-weight: 500; border-radius: 4px; }
+
+/* info button */
+.info-btn { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--text3); background: none; color: var(--text3); font-size: 11px; font-weight: 700; cursor: pointer; line-height: 1; margin-left: 7px; flex-shrink: 0; transition: all 0.15s; }
+.info-btn:hover { border-color: var(--text); color: var(--text); }
+
+/* modal */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1.5rem; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+.modal { background: var(--bg); border-radius: var(--radius-lg); padding: 1.75rem; max-width: 560px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative; transform: translateY(12px); transition: transform 0.2s; }
+.modal-backdrop.open .modal { transform: translateY(0); }
+.modal-title { font-size: 16px; font-weight: 500; margin-bottom: 1rem; }
+.modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text2); line-height: 1; }
+.modal-close:hover { color: var(--text); }
+.modal-body { font-size: 13px; color: var(--text2); line-height: 1.7; }
+.modal-body p { margin-bottom: 0.9rem; }
+.modal-body p:last-child { margin-bottom: 0; }
+.modal-body strong { color: var(--text); font-weight: 500; }
+.modal-body .formula { font-family: 'Courier New', monospace; background: var(--bg2); border-radius: var(--radius); padding: 10px 14px; margin: 0.75rem 0; font-size: 12px; line-height: 1.8; color: var(--text); overflow-x: auto; white-space: pre; }
+.modal-body ul { padding-left: 1.2rem; margin-bottom: 0.9rem; }
+.modal-body li { margin-bottom: 0.4rem; }
+
+/* admin */
+.admin-form { display: flex; flex-direction: column; gap: 10px; max-width: 460px; }
+.admin-row { display: flex; flex-direction: column; gap: 4px; }
+.admin-row label { font-size: 12px; font-weight: 500; color: var(--text2); }
+.admin-row input, .admin-row select { background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 8px 12px; font-size: 14px; color: var(--text); outline: none; }
+.admin-row select { cursor: pointer; }
+.admin-row input:focus { border-color: var(--text2); }
+.admin-book-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+.admin-book-row:hover { background: var(--bg2); margin: 0 -8px; padding: 9px 8px; border-radius: var(--radius); }
+.admin-book-row:last-child { border-bottom: none; }
+.admin-book-num { font-size: 11px; color: var(--text3); min-width: 22px; }
+.admin-book-info { flex: 1; min-width: 0; }
+.admin-book-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-book-meta { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.admin-book-isbn { font-size: 11px; color: var(--text3); font-family: monospace; }
+.edit-form { background: var(--bg2); border-radius: var(--radius-lg); padding: 14px; margin: 4px 0 8px; display: none; flex-direction: column; gap: 8px; }
+.edit-form.open { display: flex; }
+.edit-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.edit-row label { font-size: 11px; color: var(--text2); min-width: 70px; }
+.edit-row input, .edit-row select { flex: 1; min-width: 120px; background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 6px 10px; font-size: 13px; color: var(--text); outline: none; }
+.edit-actions { display: flex; gap: 8px; margin-top: 4px; }
+.save-edit-btn { background: var(--text); color: var(--bg); border: none; padding: 6px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; }
+.save-edit-btn:hover { opacity: 0.82; }
+.del-btn { background: none; border: 0.5px solid var(--border2); color: var(--red-text); padding: 6px 14px; border-radius: var(--radius); font-size: 13px; cursor: pointer; }
+.del-btn:hover { background: var(--red-bg); }
+.sub-tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.sub-tab-btn { padding: 5px 14px; font-size: 13px; font-weight: 500; background: var(--bg2); border: 0.5px solid var(--border); border-radius: 20px; color: var(--text2); cursor: pointer; }
+.sub-tab-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+.sub-tab { display: none; }
+.sub-tab.active { display: block; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1>Book Club</h1>
+  <p class="subtitle">24 books and counting.</p>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('survey')">Rate books</button>
+    <button class="tab-btn" onclick="switchTab('dash')">Dashboard</button>
+    <button class="tab-btn" onclick="switchTab('viz')">Visualizations</button>
+    <button class="tab-btn" onclick="switchTab('admin')" id="admin-tab-btn">Admin</button>
+  </div>
+
+  <!-- RATE BOOKS -->
+  <div id="tab-survey" class="tab active">
+    <p class="note">Enter your name to load your ratings. Saves are shared with the whole club.</p>
+    <div class="name-row">
+      <input type="text" id="name-input" placeholder="Your name..." maxlength="30" />
+      <button class="btn btn-sm" id="load-btn" onclick="loadMember()">Load</button>
+    </div>
+    <div class="chips-row" id="member-chips"></div>
+    <div id="book-list"></div>
+    <div id="survey-footer" class="survey-footer" style="display:none;">
+      <button class="btn" id="save-btn" onclick="saveRatings()">Save ratings</button>
+      <div class="status" id="save-status"></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tab-dash" class="tab">
+    <div id="dash-content"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+  </div>
+
+  <!-- VISUALIZATIONS -->
+  <div id="tab-viz" class="tab">
+    <div class="sub-tab-bar">
+      <button class="sub-tab-btn active" onclick="switchSubTab('books')">Books</button>
+      <button class="sub-tab-btn" onclick="switchSubTab('ratings')">Ratings</button>
+    </div>
+    <div id="sub-tab-books" class="sub-tab active">
+      <div id="viz-books-content"><div class="loading"><span class="spinner"></span>Loading book data...</div></div>
+    </div>
+    <div id="sub-tab-ratings" class="sub-tab">
+      <div id="viz-ratings-content"><div class="loading"><span class="spinner"></span>Loading...</div></div>
+    </div>
+  </div>
+  <!-- ADMIN -->
+  <div id="tab-admin" class="tab">
+
+    <!-- lock screen -->
+    <div id="admin-lock">
+      <p class="note">This area is for managing books and app settings.</p>
+      <div class="name-row">
+        <input type="password" id="admin-pw-input" placeholder="Password..." />
+        <button class="btn btn-sm" onclick="unlockAdmin()">Unlock</button>
+      </div>
+      <div class="status err" id="admin-lock-err"></div>
+    </div>
+
+    <!-- admin panel (hidden until unlocked) -->
+    <div id="admin-panel" style="display:none;">
+
+      <p class="section-head" style="margin-top:0;">Add a book</p>
+      <div class="admin-form" id="add-book-form">
+        <div class="admin-row">
+          <label>Title</label>
+          <input type="text" id="ab-title" placeholder="e.g. Dune" />
+        </div>
+        <div class="admin-row">
+          <label>Author</label>
+          <input type="text" id="ab-author" placeholder="e.g. Frank Herbert" />
+        </div>
+        <div class="admin-row">
+          <label>Genre</label>
+          <input type="text" id="ab-genre" placeholder="e.g. Science Fiction" />
+        </div>
+        <div class="admin-row">
+          <label>Nominator</label>
+          <input type="text" id="ab-nominator" placeholder="e.g. Clark" />
+        </div>
+        <div class="admin-row">
+          <label>Meeting date</label>
+          <input type="text" id="ab-date" placeholder="YYYY-MM-DD or leave blank" />
+        </div>
+        <div class="admin-row">
+          <label>ISBN <span style="font-weight:400;color:var(--text3);">(first edition preferred)</span></label>
+          <input type="text" id="ab-isbn" placeholder="e.g. 0441013597" />
+        </div>
+        <div class="admin-row">
+          <label>Status</label>
+          <select id="ab-status">
+            <option value="Finished">Finished</option>
+            <option value="In progress">In progress</option>
+            <option value="Upcoming">Upcoming</option>
+          </select>
+        </div>
+        <button class="btn" style="margin-top:0.5rem;" onclick="addBook()">Add book</button>
+        <div class="status" id="add-book-status"></div>
+      </div>
+
+      <hr class="divider">
+      <p class="section-head">Current book list <span style="font-weight:400;color:var(--text3);font-size:12px;">(click a row to edit)</span></p>
+      <div id="admin-book-list"></div>
+
+      <hr class="divider">
+      <p class="section-head" style="color:var(--red-text);">Danger zone</p>
+      <p class="note" style="margin-bottom:0.75rem;">Clear all ratings data from the shared bin. This cannot be undone.</p>
+      <button class="btn" style="background:#A32D2D;" onclick="clearAllRatings()">Clear all ratings</button>
+      <div class="status" id="danger-status"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalDirect()">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const BIN_ID  = '69f22fbd36566621a80753f8';
+const API_KEY = '$2a$10$S6KvGUqGlSJE0sX4oxPlteWEKuzfTM24BzEohtv3EXyuIGa3E.RYq';
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+// ── BOOK DATA ────────────────────────────────────────────────────────────────
+const BOOKS = [
+  {title:"Solaris",                    author:"Stanislaw Lem",         genre:"Science Fiction",     nominator:"Clark", meetingDate:"2022-12-03"},
+  {title:"Left Hand of Darkness",      author:"Ursula K. LeGuin",      genre:"Science Fiction",     nominator:"David", meetingDate:"2023-01-07"},
+  {title:"Who Fears Death",            author:"Nnedi Okorafor",        genre:"Science Fantasy",     nominator:"Davis", meetingDate:"2023-02-11"},
+  {title:"Shadow of the Torturer",     author:"Gene Wolfe",            genre:"Science Fantasy",     nominator:"Jeff",  meetingDate:"2023-03-18"},
+  {title:"Babel 17",                   author:"Samuel R. Delany",      genre:"Science Fiction",     nominator:"Luke",  meetingDate:"2023-04-23"},
+  {title:"Kafka on the Shore",         author:"Haruki Murakami",       genre:"Magical Realism",     nominator:"Clark", meetingDate:"2023-06-21"},
+  {title:"Axiomatic",                  author:"Greg Egan",             genre:"Science Fiction",     nominator:"David", meetingDate:"2023-08-20"},
+  {title:"A Canticle for Leibowitz",   author:"Walter M. Miller Jr.",  genre:"Science Fiction",     nominator:"Davis", meetingDate:"2023-10-12"},
+  {title:"Titus Groan",                author:"Mervyn Peake",          genre:"Gothic Fiction",      nominator:"Jeff",  meetingDate:"2023-12-10"},
+  {title:"Day of the Oprichnik",       author:"Vladimir Sorokin",      genre:"Science Fiction",     nominator:"Clark", meetingDate:"2024-02-04"},
+  {title:"The City & the City",        author:"China Miéville",        genre:"Weird Fiction",       nominator:"David", meetingDate:"2024-03-28"},
+  {title:"Piranesi",                   author:"Susanna Clarke",        genre:"Fantasy",             nominator:"Davis", meetingDate:"2024-05-05"},
+  {title:"The Algebraist",             author:"Iain M. Banks",         genre:"Science Fiction",     nominator:"Luke",  meetingDate:"2024-07-17"},
+  {title:"Handbook of American Prayer",author:"Lucius Shepard",        genre:"Weird Fiction",       nominator:"Jeff",  meetingDate:"2024-09-22"},
+  {title:"Herscht 07769",              author:"László Krasznahorkai",  genre:"Weird Fiction",       nominator:"Clark", meetingDate:"2024-11-17"},
+  {title:"Never Let Me Go",            author:"Kazuo Ishiguro",        genre:"Science Fiction",     nominator:"Alex",  meetingDate:"2024-12-21"},
+  {title:"Lord of Light",              author:"Roger Zelazny",         genre:"Science Fantasy",     nominator:"David", meetingDate:"2025-02-09"},
+  {title:"Blindsight",                 author:"Peter Watts",           genre:"Science Fiction",     nominator:"Davis", meetingDate:"2025-04-02"},
+  {title:"The Caves of Steel",         author:"Isaac Asimov",          genre:"Science Fiction",     nominator:"Jeff",  meetingDate:"2025-05-11"},
+  {title:"The Snow Queen",             author:"Joan D. Vinge",         genre:"Science Fiction",     nominator:"Luke",  meetingDate:"2025-07-26"},
+  {title:"The Ice Shirt",              author:"William T. Vollmann",   genre:"Historical Fantasy",  nominator:"Clark", meetingDate:"2025-09-28"},
+  {title:"Parable of the Sower",       author:"Octavia E. Butler",     genre:"Science Fiction",     nominator:"David", meetingDate:"2025-11-08"},
+  {title:"Where the Axe is Buried",    author:"Ray Nayler",            genre:"Science Fiction",     nominator:"Alex",  meetingDate:null},
+  {title:"A Brightness Long Ago",      author:"Guy Gavriel Kay",       genre:"Historical Romantasy",nominator:"Davis", meetingDate:"2026-03-21"},
+];
+
+const PALETTE = ["#378ADD","#1D9E75","#D4537E","#BA7517","#7F77DD","#D85A30","#639922","#E24B4A","#EF9F27"];
+const GENRE_COLORS = {
+  "Science Fiction":    "#378ADD",
+  "Science Fantasy":    "#1D9E75",
+  "Weird Fiction":      "#D4537E",
+  "Magical Realism":    "#BA7517",
+  "Gothic Fiction":     "#7F77DD",
+  "Fantasy":            "#639922",
+  "Historical Fantasy": "#D85A30",
+  "Historical Romantasy":"#888780",
+};
+function gcolor(genre) { return GENRE_COLORS[genre] || '#888'; }
+
+let currentMember = null;
+let myRatings = {};
+let binData = { members: {}, bookMeta: {} };
+let chartInstances = {};
+
+function pcolor(name) {
+  const keys = Object.keys(binData.members).sort();
+  const i = keys.indexOf(name);
+  return PALETTE[i >= 0 ? i % PALETTE.length : 0];
+}
+function ini(name) { return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null; }
+function med(arr) {
+  if (!arr.length) return null;
+  const s=[...arr].sort((a,b)=>a-b), m=Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+function daysBetween(a, b) { return Math.round((new Date(b)-new Date(a))/(1000*60*60*24)); }
+function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+// ── JSONBIN ──────────────────────────────────────────────────────────────────
+async function fetchBin() {
+  const res = await fetch(BIN_URL + '/latest', { headers: { 'X-Master-Key': API_KEY } });
+  if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+  return (await res.json()).record;
+}
+async function updateBin(data) {
+  const res = await fetch(BIN_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('Update failed: ' + res.status);
+}
+
+// ── OPEN LIBRARY ─────────────────────────────────────────────────────────────
+async function fetchBookMeta(book) {
+  const q = encodeURIComponent(`${book.title} ${book.author}`);
+  const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=title,author_name,first_publish_year,isbn,number_of_pages_median,cover_i`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.docs || !data.docs.length) return null;
+  // prefer exact title match
+  const match = data.docs.find(d => d.title && d.title.toLowerCase().includes(book.title.toLowerCase().split(':')[0].toLowerCase())) || data.docs[0];
+  const isbn = match.isbn ? match.isbn[0] : null;
+  return {
+    year: match.first_publish_year || null,
+    pages: match.number_of_pages_median || null,
+    isbn,
+    coverId: match.cover_i || null,
+    coverUrl: isbn
+      ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`
+      : match.cover_i
+        ? `https://covers.openlibrary.org/b/id/${match.cover_i}-M.jpg`
+        : null
+  };
+}
+
+async function ensureBookMeta() {
+  const missing = (binData.books||BOOKS).filter(b => !binData.bookMeta[b.title] || (!binData.bookMeta[b.title].year && !b.isbn));
+  if (!missing.length) return;
+  // fetch in batches of 4 to be polite
+  for (let i = 0; i < missing.length; i += 4) {
+    const batch = missing.slice(i, i+4);
+    const results = await Promise.all(batch.map(b => fetchBookMeta(b).catch(()=>null)));
+    batch.forEach((b, j) => { binData.bookMeta[b.title] = results[j] || {}; });
+  }
+  await updateBin(binData);
+}
+
+// ── SURVEY ───────────────────────────────────────────────────────────────────
+async function loadMember() {
+  const name = document.getElementById('name-input').value.trim();
+  if (!name) return;
+  currentMember = name;
+  const btn = document.getElementById('load-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    binData = await fetchBin();
+    if (!binData.members) binData.members = {};
+    if (!binData.bookMeta) binData.bookMeta = {};
+    myRatings = binData.members[name] ? { ...binData.members[name] } : {};
+    renderChips();
+    renderSurvey();
+    document.getElementById('survey-footer').style.display = 'block';
+    const c = Object.keys(myRatings).length;
+    setStatus('save-status', `Loaded${c ? ' — '+c+' rating'+(c!==1?'s':'')+' found' : ''}.`, 'ok');
+  } catch(e) {
+    setStatus('save-status', 'Could not load. Check your connection.', 'err');
+  }
+  btn.disabled = false; btn.textContent = 'Load';
+}
+
+function renderChips() {
+  const members = Object.keys(binData.members || {});
+  document.getElementById('member-chips').innerHTML = members.map(m =>
+    `<div class="chip${m===currentMember?' active':''}" onclick="quickSwitch(this)">${m}</div>`
+  ).join('');
+}
+
+async function quickSwitch(el) {
+  document.getElementById('name-input').value = el.textContent.trim();
+  await loadMember();
+}
+
+function renderSurvey() {
+  const list = document.getElementById('book-list');
+  list.innerHTML = '';
+  const books = binData.books || BOOKS;
+  books.forEach((b, i) => {
+    const cur = myRatings[b.title] || 0;
+    const meta = binData.bookMeta?.[b.title] || {};
+    const coverUrl = b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : meta.coverUrl;
+    const row = document.createElement('div');
+    row.className = 'book-row';
+    row.innerHTML = `
+      ${coverUrl
+        ? `<img class="book-cover" src="${coverUrl}" alt="" loading="lazy" onerror="this.style.display='none'">`
+        : `<div class="book-cover-placeholder"></div>`}
+      <div class="book-info">
+        <div class="book-title">${b.title}</div>
+        <div class="book-meta">${b.author}${b.genre?` · <span style="color:${gcolor(b.genre||'')};">${b.genre}</span>`:''}${meta.year?' · '+meta.year:''}${meta.pages?' · '+meta.pages+' pp':''}</div>
+      </div>
+      <div class="stars" id="stars-${i}">
+        ${[1,2,3,4,5].map(s=>`<span class="star${s<=cur?' lit':''}" data-idx="${i}" data-val="${s}">&#9733;</span>`).join('')}
+      </div>`;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.star').forEach(s => {
+    s.addEventListener('mouseover', () => hov(+s.dataset.idx, +s.dataset.val));
+    s.addEventListener('mouseout', () => rep(+s.dataset.idx));
+    s.addEventListener('click', () => { myRatings[(binData.books||BOOKS)[+s.dataset.idx].title] = +s.dataset.val; rep(+s.dataset.idx); });
+  });
+}
+
+function hov(i,v){ document.querySelectorAll(`#stars-${i} .star`).forEach(s=>s.classList.toggle('lit',+s.dataset.val<=v)); }
+function rep(i){ const c=myRatings[(binData.books||BOOKS)[i].title]||0; document.querySelectorAll(`#stars-${i} .star`).forEach(s=>s.classList.toggle('lit',+s.dataset.val<=c)); }
+
+async function saveRatings() {
+  if (!currentMember) return;
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Saving...';
+  try {
+    binData = await fetchBin();
+    if (!binData.members) binData.members = {};
+    if (!binData.bookMeta) binData.bookMeta = {};
+    binData.members[currentMember] = myRatings;
+    await updateBin(binData);
+    renderChips();
+    setStatus('save-status', 'Saved! Everyone will see your ratings.', 'ok');
+  } catch(e) { setStatus('save-status', 'Save failed. Try again.', 'err'); }
+  btn.disabled = false; btn.textContent = 'Save ratings';
+}
+
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'status ' + cls;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────────────────────
+function bookRatings(title) {
+  const members = Object.keys(binData.members);
+  return members.map(m=>binData.members[m][title]).filter(v=>v!=null).map(Number);
+}
+
+async function renderDash() {
+  const content = document.getElementById('dash-content');
+  content.innerHTML = '<div class="loading"><span class="spinner"></span>Loading...</div>';
+  try { binData = await fetchBin(); if(!binData.members)binData.members={}; if(!binData.bookMeta)binData.bookMeta={}; }
+  catch(e) { content.innerHTML='<div class="no-data">Could not load data.</div>'; return; }
+
+  const members = Object.keys(binData.members);
+  const allVals = members.flatMap(m=>Object.values(binData.members[m]).map(Number));
+
+  if (!allVals.length) {
+    content.innerHTML = '<div class="no-data">No ratings yet — go rate some books!</div>';
+    return;
+  }
+
+  const ratedBooks = (binData.books||BOOKS).filter(b=>bookRatings(b.title).length>0);
+  const bookAvgs = ratedBooks.map(b=>({book:b,a:avg(bookRatings(b.title)),vals:bookRatings(b.title)}));
+  const sorted = [...bookAvgs].sort((a,b)=>b.a-a.a);
+  const highest=sorted[0], lowest=sorted[sorted.length-1];
+  const controversial = bookAvgs.filter(x=>x.vals.length>=2).sort((a,b)=>(Math.max(...b.vals)-Math.min(...b.vals))-(Math.max(...a.vals)-Math.min(...a.vals)))[0];
+  const memberAvgs = members.map(m=>{const v=Object.values(binData.members[m]).map(Number);return{name:m,a:avg(v),count:v.length};}).filter(x=>x.a!=null).sort((a,b)=>a.a-b.a);
+  const harshest=memberAvgs[0], champ=memberAvgs[memberAvgs.length-1];
+
+  content.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+      <button class="ghost-btn" onclick="renderDash()">Refresh</button>
+    </div>
+    <div class="stat-grid" id="sg"></div>
+    <div class="award-grid" id="ag"></div>
+    <p class="section-head">Members</p>
+    <div id="ml"></div>
+    <p class="section-head" style="margin-top:1.5rem;">All books — average rating</p>
+    <div id="rb"></div>
+    <p class="section-head" style="margin-top:1.5rem;">Ratings by nominator</p>
+    <div class="chart-wrap" style="height:${Math.max(200,members.length*45+80)}px;"><canvas id="nom-chart"></canvas></div>`;
+
+  const books = binData.books || BOOKS;
+  const totalPages = books.reduce((sum, b) => {
+    const isbn = b.isbn;
+    const meta = binData.bookMeta?.[b.title] || {};
+    const pages = (isbn && meta.pages) ? meta.pages : meta.pages || 0;
+    return sum + pages;
+  }, 0);
+
+  document.getElementById('sg').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Books rated</div><div class="stat-val">${ratedBooks.length} / ${books.length}</div></div>
+    <div class="stat-card"><div class="stat-label">Overall mean</div><div class="stat-val">${avg(allVals).toFixed(2)}</div></div>
+    <div class="stat-card"><div class="stat-label">Overall median</div><div class="stat-val">${med(allVals).toFixed(1)}</div></div>
+    <div class="stat-card"><div class="stat-label">Members</div><div class="stat-val">${members.length}</div></div>
+    ${totalPages > 0 ? `<div class="stat-card"><div class="stat-label">Total pages read</div><div class="stat-val">${totalPages.toLocaleString()}</div></div>` : ''}`;
+
+  document.getElementById('ag').innerHTML = `
+    <div class="award-card"><span class="badge" style="background:var(--amber-bg);color:var(--amber-text);">★ Best book</span><div class="award-title">${highest.book.title}</div><div class="award-sub">${highest.book.author}</div><div class="award-score" style="color:var(--amber);">${highest.a.toFixed(2)}/5</div></div>
+    <div class="award-card"><span class="badge" style="background:var(--red-bg);color:var(--red-text);">↓ Lowest rated</span><div class="award-title">${lowest.book.title}</div><div class="award-sub">${lowest.book.author}</div><div class="award-score" style="color:#E24B4A;">${lowest.a.toFixed(2)}/5</div></div>
+    ${controversial?`<div class="award-card"><span class="badge" style="background:var(--purple-bg);color:var(--purple-text);">⚡ Most divisive</span><div class="award-title">${controversial.book.title}</div><div class="award-sub">${controversial.book.author}</div><div class="award-score" style="color:var(--purple);">spread ${(Math.max(...controversial.vals)-Math.min(...controversial.vals)).toFixed(0)}</div></div>`:''}
+    ${harshest?`<div class="award-card"><span class="badge" style="background:var(--red-bg);color:var(--red-text);">🗡 Harshest critic</span><div class="award-title">${harshest.name}</div><div class="award-sub">${harshest.count} books rated</div><div class="award-score" style="color:#E24B4A;">${harshest.a.toFixed(2)}/5</div></div>`:''}
+    ${champ&&champ.name!==harshest?.name?`<div class="award-card"><span class="badge" style="background:var(--green-bg);color:var(--green-text);">☀ Biggest fan</span><div class="award-title">${champ.name}</div><div class="award-sub">${champ.count} books rated</div><div class="award-score" style="color:var(--green);">${champ.a.toFixed(2)}/5</div></div>`:''}`;
+
+  document.getElementById('ml').innerHTML = [...memberAvgs].sort((a,b)=>b.a-a.a).map(m=>{
+    const col=pcolor(m.name);
+    return `<div class="user-bar">
+      <div class="avatar" style="background:${col}22;color:${col};">${ini(m.name)}</div>
+      <div><div style="display:flex;align-items:center;"><span style="font-size:14px;font-weight:500;">${m.name}</span>
+        ${m.name===harshest?.name?'<span class="critic-badge">harshest</span>':''}
+        ${m.name===champ?.name&&champ?.name!==harshest?.name?'<span class="champ-badge">biggest fan</span>':''}</div>
+        <div style="font-size:12px;color:var(--text2);">${m.count} book${m.count!==1?'s':''} rated</div></div>
+      <div style="margin-left:auto;font-size:16px;font-weight:500;color:${col};">${m.a.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('rb').innerHTML = sorted.map(({book,a})=>`
+    <div class="rbar-wrap"><div class="rbar-label" title="${book.title}">${book.title}</div>
+    <div class="rbar-row"><div class="rbar" style="width:${Math.round(a/5*300)}px;background:${pcolor(book.nominator)};"></div>
+    <span class="rbar-val">${a.toFixed(2)}</span></div></div>`).join('');
+
+  // nominator chart
+  const noms = [...new Set((binData.books||BOOKS).map(b=>b.nominator))];
+  const nData = noms.map(n=>({n,a:avg((binData.books||BOOKS).filter(b=>b.nominator===n).flatMap(b=>bookRatings(b.title)))})).filter(x=>x.a!=null);
+  destroyChart('nom-chart');
+  chartInstances['nom-chart'] = new Chart(document.getElementById('nom-chart'),{
+    type:'bar',
+    data:{labels:nData.map(x=>x.n),datasets:[{data:nData.map(x=>+x.a.toFixed(2)),backgroundColor:nData.map(x=>pcolor(x.n)),borderWidth:0,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Nominator',font:{size:12},color:'var(--text2)'},grid:{display:false}},y:{min:0,max:6,title:{display:true,text:'Average rating',font:{size:12},color:'var(--text2)'},ticks:{stepSize:1,callback:v=>v<=5?v:null}}}}
+  });
+}
+
+// ── VIZ: BOOKS ───────────────────────────────────────────────────────────────
+async function renderVizBooks() {
+  const content = document.getElementById('viz-books-content');
+  content.innerHTML = '<div class="loading"><span class="spinner"></span>Loading book metadata from Open Library...</div>';
+  try {
+    binData = await fetchBin();
+    if (!binData.bookMeta) binData.bookMeta = {};
+    if (!binData.members) binData.members = {};
+  } catch(e) { content.innerHTML='<div class="no-data">Could not load data.</div>'; return; }
+
+  content.innerHTML = '<div class="loading"><span class="spinner"></span>Fetching book data...</div>';
+  await ensureBookMeta();
+
+  const booksWithMeta = (binData.books||BOOKS).map(b=>({...b, meta: binData.bookMeta[b.title]||{}, coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : (binData.bookMeta[b.title]||{}).coverUrl }));
+
+  // meeting gaps
+  const dated = (binData.books||BOOKS).filter(b=>b.meetingDate).sort((a,b)=>new Date(a.meetingDate)-new Date(b.meetingDate));
+  const gaps = [];
+  for (let i=1;i<dated.length;i++) {
+    gaps.push({ label: dated[i].title.length > 18 ? dated[i].title.slice(0,16)+'…' : dated[i].title, days: daysBetween(dated[i-1].meetingDate, dated[i].meetingDate), full: dated[i].title });
+  }
+
+  // pub year vs rating
+  const withYear = booksWithMeta.filter(b=>b.meta.year);
+  const withPages = booksWithMeta.filter(b=>b.meta.pages);
+
+  content.innerHTML = `
+    <p class="section-head">Meeting gaps (days between meetings)</p>
+    <div class="chart-wrap" style="height:300px;"><canvas id="gap-chart"></canvas></div>
+
+    <hr class="divider">
+    <p class="section-head">Publication year</p>
+    <div class="chart-wrap" style="height:300px;"><canvas id="year-chart"></canvas></div>
+
+    <hr class="divider">
+    <p class="section-head">Page count</p>
+    <div class="chart-wrap" style="height:300px;"><canvas id="pages-chart"></canvas></div>
+
+    <hr class="divider">
+    <p class="section-head">Book covers</p>
+    <div class="book-card-grid" id="cover-grid"></div>`;
+
+  // covers
+  document.getElementById('cover-grid').innerHTML = booksWithMeta.map(b=>`
+    <div class="book-card">
+      ${b.meta.coverUrl ? `<img src="${b.meta.coverUrl}" alt="${b.title}" loading="lazy" onerror="this.parentElement.querySelector('.book-card-title').textContent='${b.title.replace(/'/g,"\\'")}'; this.remove();">` : `<div style="width:80px;height:116px;background:var(--bg2);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text3);text-align:center;padding:4px;">${b.title}</div>`}
+      <div class="book-card-title">${b.title}</div>
+    </div>`).join('');
+
+  // gap chart — line plot, x = book index
+  destroyChart('gap-chart');
+  const avgGap = avg(gaps.map(g=>g.days));
+  const maxGap = Math.max(...gaps.map(g=>g.days));
+  chartInstances['gap-chart'] = new Chart(document.getElementById('gap-chart'),{
+    type:'line',
+    data:{
+      labels: gaps.map((_,i)=>i+2), // book #2 onwards (gap is "after book N")
+      datasets:[{
+        data: gaps.map(g=>g.days),
+        borderColor:'#378ADD',
+        backgroundColor:'#378ADD22',
+        pointBackgroundColor: gaps.map(g=>g.days > avgGap*1.5 ? '#D4537E' : g.days < avgGap*0.6 ? '#1D9E75' : '#378ADD'),
+        pointRadius:5, pointHoverRadius:8,
+        tension:0.35, fill:true, borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title: i => `Book #${i[0].label}: ${gaps[i[0].dataIndex].full}`,
+          label: i => `${i.raw} days since previous meeting`
+        }}
+      },
+      scales:{
+        x:{
+          title:{display:true, text:'Book # in reading order', font:{size:12}, color:'var(--text2)'},
+          ticks:{stepSize:1}, grid:{color:'rgba(128,128,128,0.08)'}
+        },
+        y:{
+          title:{display:true, text:'Days between meetings', font:{size:12}, color:'var(--text2)'},
+          min:0, max: Math.ceil(maxGap*1.08),
+          grid:{color:'rgba(128,128,128,0.08)'}
+        }
+      }
+    }
+  });
+
+  // pub year chart — binned by decade
+  destroyChart('year-chart');
+  const booksWithYear = booksWithMeta.filter(b=>b.meta.year);
+  const decadeCounts = {};
+  booksWithYear.forEach(b => {
+    const decade = Math.floor(b.meta.year / 10) * 10;
+    if (!decadeCounts[decade]) decadeCounts[decade] = { count: 0, titles: [] };
+    decadeCounts[decade].count++;
+    decadeCounts[decade].titles.push(b.title);
+  });
+  const decadesSorted = Object.keys(decadeCounts).map(Number).sort((a,b)=>a-b);
+  chartInstances['year-chart'] = new Chart(document.getElementById('year-chart'),{
+    type:'bar',
+    data:{
+      labels: decadesSorted.map(d=>`${d}s`),
+      datasets:[{
+        data: decadesSorted.map(d=>decadeCounts[d].count),
+        backgroundColor: decadesSorted.map((_,i)=>PALETTE[i % PALETTE.length]),
+        borderWidth:0, borderRadius:4
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title: i => `${decadesSorted[i[0].dataIndex]}s`,
+          label: i => [`${i.raw} book${i.raw!==1?'s':''}`, ...decadeCounts[decadesSorted[i[0].dataIndex]].titles.map(t=>`  · ${t}`)]
+        }}
+      },
+      scales:{
+        x:{ title:{display:true, text:'Publication decade', font:{size:12}, color:'var(--text2)'}, grid:{display:false} },
+        y:{ title:{display:true, text:'Number of books', font:{size:12}, color:'var(--text2)'}, min:0, ticks:{stepSize:1}, grid:{color:'rgba(128,128,128,0.08)'} }
+      }
+    }
+  });
+
+  // pages chart — line plot, x = book index (reading order)
+  destroyChart('pages-chart');
+  const pagesInOrder = booksWithMeta.filter(b=>b.meta.pages);
+  const maxPages = Math.max(...pagesInOrder.map(b=>b.meta.pages));
+  chartInstances['pages-chart'] = new Chart(document.getElementById('pages-chart'),{
+    type:'line',
+    data:{
+      labels: pagesInOrder.map((_,i)=>i+1),
+      datasets:[{
+        data: pagesInOrder.map(b=>b.meta.pages),
+        borderColor:'#1D9E75',
+        backgroundColor:'#1D9E7522',
+        pointBackgroundColor:'#1D9E75',
+        pointRadius:5, pointHoverRadius:8,
+        tension:0.35, fill:true, borderWidth:2
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title: i => `Book #${i[0].label}: ${pagesInOrder[i[0].dataIndex].title}`,
+          label: i => `${i.raw} pages`
+        }}
+      },
+      scales:{
+        x:{
+          title:{display:true, text:'Book # in reading order', font:{size:12}, color:'var(--text2)'},
+          ticks:{stepSize:1}, grid:{color:'rgba(128,128,128,0.08)'}
+        },
+        y:{
+          title:{display:true, text:'Page count', font:{size:12}, color:'var(--text2)'},
+          min:0, max: Math.ceil(maxPages*1.08),
+          grid:{color:'rgba(128,128,128,0.08)'}
+        }
+      }
+    }
+  });
+}
+
+// ── VIZ: RATINGS ─────────────────────────────────────────────────────────────
+async function renderVizRatings() {
+  const content = document.getElementById('viz-ratings-content');
+  content.innerHTML = '<div class="loading"><span class="spinner"></span>Loading ratings...</div>';
+  try { binData = await fetchBin(); if(!binData.members)binData.members={}; if(!binData.bookMeta)binData.bookMeta={}; }
+  catch(e) { content.innerHTML='<div class="no-data">Could not load data.</div>'; return; }
+
+  const members = Object.keys(binData.members);
+  const allRated = (binData.books||BOOKS).filter(b=>bookRatings(b.title).length>=2);
+
+  if (members.length < 2 || allRated.length < 3) {
+    content.innerHTML = '<div class="no-data">Need at least 2 members and 3 rated books to show rating visualizations.</div>';
+    return;
+  }
+
+  // nominator batting average (avg rating of their picks)
+  const noms = [...new Set((binData.books||BOOKS).map(b=>b.nominator))];
+  const batAvg = noms.map(n=>{
+    const picks = (binData.books||BOOKS).filter(b=>b.nominator===n);
+    const vals = picks.flatMap(b=>bookRatings(b.title));
+    const stddev = vals.length>=2 ? Math.sqrt(vals.map(v=>(v-avg(vals))**2).reduce((a,b)=>a+b,0)/vals.length) : null;
+    return {n, avg:avg(vals), stddev, count:picks.length, rated:picks.filter(b=>bookRatings(b.title).length>0).length};
+  }).filter(x=>x.avg!=null).sort((a,b)=>b.avg-a.avg);
+
+  // taste similarity matrix (pearson correlation)
+  function pearson(a, b, books) {
+    const shared = books.filter(bk=>binData.members[a][bk.title]!=null && binData.members[b][bk.title]!=null);
+    if (shared.length < 3) return null;
+    const xa = shared.map(bk=>+binData.members[a][bk.title]);
+    const xb = shared.map(bk=>+binData.members[b][bk.title]);
+    const ma=avg(xa), mb=avg(xb);
+    const num = xa.map((v,i)=>(v-ma)*(xb[i]-mb)).reduce((a,b)=>a+b,0);
+    const den = Math.sqrt(xa.map(v=>(v-ma)**2).reduce((a,b)=>a+b,0)*xb.map(v=>(v-mb)**2).reduce((a,b)=>a+b,0));
+    return den===0?null:num/den;
+  }
+
+  // contrarian: avg absolute deviation from group mean per book
+  const contrarian = members.map(m=>{
+    const deviations = (binData.books||BOOKS).map(b=>{
+      const r = binData.members[m][b.title];
+      if (r==null) return null;
+      const groupAvg = avg(bookRatings(b.title));
+      return Math.abs(+r - groupAvg);
+    }).filter(v=>v!=null);
+    return {name:m, dev:avg(deviations), count:deviations.length};
+  }).filter(x=>x.dev!=null).sort((a,b)=>b.dev-a.dev);
+
+  // rating over time per member
+  const datedBooks = (binData.books||BOOKS).filter(b=>b.meetingDate).sort((a,b)=>new Date(a.meetingDate)-new Date(b.meetingDate));
+
+  // nominator vs own rating scatter
+  const nomSelfData = [];
+  (binData.books||BOOKS).forEach(b=>{
+    const self = binData.members[b.nominator]?.[b.title];
+    const others = members.filter(m=>m!==b.nominator).map(m=>binData.members[m]?.[b.title]).filter(v=>v!=null).map(Number);
+    if (self!=null && others.length) nomSelfData.push({title:b.title, nom:b.nominator, self:+self, groupAvg:avg(others)});
+  });
+
+  content.innerHTML = `
+    <p class="section-head">Nominator batting average</p>
+    <div class="chart-wrap" style="height:${Math.max(200,batAvg.length*50+80)}px;"><canvas id="bat-chart"></canvas></div>
+
+    <hr class="divider">
+    <p class="section-head">Nominator consistency (lower stddev = more consistent picks)</p>
+    <div class="chart-wrap" style="height:${Math.max(200,batAvg.length*50+80)}px;"><canvas id="std-chart"></canvas></div>
+
+    <hr class="divider">
+    <p class="section-head">Taste similarity <button class="info-btn" onclick="openModal('pearson')" title="How is this calculated?">i</button></p>
+    <div class="heatmap-wrap"><table class="heatmap" id="heatmap-table"></table></div>
+
+    <hr class="divider">
+    <p class="section-head">Most contrarian member</p>
+    <div class="chart-wrap" style="height:${Math.max(180,contrarian.length*50+80)}px;"><canvas id="con-chart"></canvas></div>
+
+    <hr class="divider">
+    <p class="section-head">Rating over time per member</p>
+    <div class="chart-wrap" style="height:300px;"><canvas id="timeline-chart"></canvas></div>
+
+    ${nomSelfData.length>=3?`
+    <hr class="divider">
+    <p class="section-head">Nominator vs. group rating (did you hype your own pick?)</p>
+    <div class="chart-wrap" style="height:300px;"><canvas id="scatter-chart"></canvas></div>
+    `:''}`;
+
+  // batting average chart
+  destroyChart('bat-chart');
+  chartInstances['bat-chart'] = new Chart(document.getElementById('bat-chart'),{
+    type:'bar',
+    data:{labels:batAvg.map(x=>x.n),datasets:[{data:batAvg.map(x=>+x.avg.toFixed(2)),backgroundColor:batAvg.map(x=>pcolor(x.n)),borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`avg ${i.raw} across ${batAvg[i.dataIndex].rated} rated picks`}}},scales:{x:{min:0,max:6,title:{display:true,text:'Average rating',font:{size:12},color:'var(--text2)'},ticks:{stepSize:1,callback:v=>v<=5?v:null},grid:{color:'rgba(128,128,128,0.08)'}},y:{title:{display:true,text:'Nominator',font:{size:12},color:'var(--text2)'},grid:{display:false}}}}
+  });
+
+  // consistency chart (stddev)
+  const stdSorted = batAvg.filter(x=>x.stddev!=null).sort((a,b)=>a.stddev-b.stddev);
+  destroyChart('std-chart');
+  chartInstances['std-chart'] = new Chart(document.getElementById('std-chart'),{
+    type:'bar',
+    data:{labels:stdSorted.map(x=>x.n),datasets:[{data:stdSorted.map(x=>+x.stddev.toFixed(2)),backgroundColor:stdSorted.map(x=>pcolor(x.n)),borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`stddev ${i.raw}`}}},scales:{x:{title:{display:true,text:'Std. deviation of ratings',font:{size:12},color:'var(--text2)'},grid:{color:'rgba(128,128,128,0.08)'}},y:{title:{display:true,text:'Nominator',font:{size:12},color:'var(--text2)'},grid:{display:false}}}}
+  });
+
+  // heatmap — lower triangular only
+  const htable = document.getElementById('heatmap-table');
+  // header row: empty corner + member names (skip first since row 0 has no left cols)
+  let html = '<tr><th></th>';
+  members.slice(0, members.length-1).forEach(m => { html += `<th>${m}</th>`; });
+  html += '</tr>';
+  members.forEach((a, ai) => {
+    if (ai === 0) return; // first member has no columns to the left
+    html += `<tr><th style="text-align:right;padding-right:10px;">${a}</th>`;
+    members.forEach((b, bi) => {
+      if (bi >= ai) return; // only show lower triangle (b is left of a)
+      const r = pearson(a, b, binData.books||BOOKS);
+      if (r === null) { html += '<td style="background:var(--bg2);color:var(--text3);">?</td>'; return; }
+      const pct = (r+1)/2;
+      const g = Math.round(pct*180);
+      const bg = `rgb(${Math.round(55+pct*30)},${g},${Math.round(55+pct*30)})`;
+      html += `<td style="background:${bg};color:white;" title="${a} vs ${b}: ${r.toFixed(2)}">${r.toFixed(2)}</td>`;
+    });
+    html += '</tr>';
+  });
+  htable.innerHTML = html;
+
+  // contrarian chart
+  destroyChart('con-chart');
+  chartInstances['con-chart'] = new Chart(document.getElementById('con-chart'),{
+    type:'bar',
+    data:{labels:contrarian.map(x=>x.name),datasets:[{data:contrarian.map(x=>+x.dev.toFixed(2)),backgroundColor:contrarian.map(x=>pcolor(x.name)),borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`avg ${i.raw} stars from group mean`}}},scales:{x:{title:{display:true,text:'Avg deviation from group mean (stars)',font:{size:12},color:'var(--text2)'},grid:{color:'rgba(128,128,128,0.08)'}},y:{title:{display:true,text:'Member',font:{size:12},color:'var(--text2)'},grid:{display:false}}}}
+  });
+
+  // timeline chart
+  destroyChart('timeline-chart');
+  const tlDatasets = members.map(m=>({
+    label: m,
+    data: datedBooks.map(b=>{
+      const r=binData.members[m]?.[b.title];
+      return r!=null?{x:b.meetingDate,y:+r}:null;
+    }).filter(Boolean),
+    borderColor: pcolor(m),
+    backgroundColor: pcolor(m)+'44',
+    tension:0.3, pointRadius:5, pointHoverRadius:7,
+    fill:false
+  }));
+  chartInstances['timeline-chart'] = new Chart(document.getElementById('timeline-chart'),{
+    type:'line',
+    data:{datasets:tlDatasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:12}}}},
+      scales:{
+        x:{type:'time',time:{unit:'month',displayFormats:{month:"MMM 'YY"}},title:{display:true,text:'Meeting date',font:{size:12},color:'var(--text2)'},ticks:{font:{size:11}},grid:{color:'rgba(128,128,128,0.08)'}},
+        y:{min:0,max:6,title:{display:true,text:'Rating',font:{size:12},color:'var(--text2)'},ticks:{stepSize:1,callback:v=>v<=5?v:null},grid:{color:'rgba(128,128,128,0.08)'}}
+      }
+    }
+  });
+
+  // scatter: nominator self-rating vs group
+  if (nomSelfData.length>=3) {
+    destroyChart('scatter-chart');
+    const scatterByNom = {};
+    nomSelfData.forEach(d=>{ if(!scatterByNom[d.nom])scatterByNom[d.nom]=[]; scatterByNom[d.nom].push({x:d.groupAvg,y:d.self,title:d.title}); });
+
+    // y=x diagonal line dataset
+    const diagLine = { label:'_diag', data:[{x:0.5,y:0.5},{x:5.5,y:5.5}], type:'line', borderColor:'rgba(128,128,128,0.35)', borderWidth:1.5, borderDash:[5,4], pointRadius:0, fill:false, tension:0, tooltip:{enabled:false} };
+
+    // custom plugin: draw HYPE / HATE watermarks and shade triangles
+    const hypehatePlugin = {
+      id: 'hypehate',
+      beforeDraw(chart) {
+        const {ctx, chartArea:{left,right,top,bottom}} = chart;
+        // find pixel coords for the two corners of the plot area
+        const xScale = chart.scales.x, yScale = chart.scales.y;
+        const x05 = xScale.getPixelForValue(0), x55 = xScale.getPixelForValue(5);
+        const y05 = yScale.getPixelForValue(0), y55 = yScale.getPixelForValue(5);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(left, top, right-left, bottom-top);
+        ctx.clip();
+
+        // HYPE triangle (top-left: y > x)
+        ctx.beginPath();
+        ctx.moveTo(x05, y05); ctx.lineTo(x55, y55); ctx.lineTo(x05, y55);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(55,138,221,0.06)';
+        ctx.fill();
+
+        // HATE triangle (bottom-right: y < x)
+        ctx.beginPath();
+        ctx.moveTo(x05, y05); ctx.lineTo(x55, y55); ctx.lineTo(x55, y05);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(228,75,74,0.06)';
+        ctx.fill();
+
+        // HYPE label
+        ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillStyle = 'rgba(55,138,221,0.13)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const hypeCx = (x05 + x05 + x55) / 3;
+        const hypeCy = (y55 + y55 + y05) / 3;
+        ctx.save();
+        ctx.translate(hypeCx, hypeCy);
+        ctx.rotate(-Math.PI / 4);
+        ctx.fillText('HYPE', 0, 0);
+        ctx.restore();
+
+        // HATE label
+        ctx.fillStyle = 'rgba(228,75,74,0.13)';
+        const hateCx = (x55 + x55 + x05) / 3;
+        const hateCy = (y05 + y05 + y55) / 3;
+        ctx.save();
+        ctx.translate(hateCx, hateCy);
+        ctx.rotate(-Math.PI / 4);
+        ctx.fillText('HATE', 0, 0);
+        ctx.restore();
+
+        ctx.restore();
+      }
+    };
+
+    chartInstances['scatter-chart'] = new Chart(document.getElementById('scatter-chart'),{
+      type:'scatter',
+      data:{datasets:[diagLine, ...Object.entries(scatterByNom).map(([nom,pts])=>({
+        label:nom, data:pts, backgroundColor:pcolor(nom)+'cc', pointRadius:7, pointHoverRadius:9
+      }))]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{display:true, labels:{boxWidth:10, font:{size:12}, filter: i => i.text !== '_diag'}},
+          tooltip:{filter: i => i.dataset.label !== '_diag', callbacks:{label:i=>`${i.dataset.label} — "${i.raw.title}": self ${i.raw.y}, group ${i.raw.x.toFixed(1)}`}}
+        },
+        scales:{
+          x:{min:0,max:6,title:{display:true,text:'Group avg (excl. nominator)',font:{size:12},color:'var(--text2)'},ticks:{stepSize:1,callback:v=>v<=5?v:null},grid:{color:'rgba(128,128,128,0.08)'}},
+          y:{min:0,max:6,title:{display:true,text:"Nominator's own rating",font:{size:12},color:'var(--text2)'},ticks:{stepSize:1,callback:v=>v<=5?v:null},grid:{color:'rgba(128,128,128,0.08)'}}
+        }
+      },
+      plugins:[hypehatePlugin]
+    });
+  }
+}
+
+// ── NAV ───────────────────────────────────────────────────────────────────────
+let vizBooksLoaded = false, vizRatingsLoaded = false, dashLoaded = false;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+  if (name==='dash' && !dashLoaded) { dashLoaded=true; renderDash(); }
+  if (name==='viz' && !vizBooksLoaded) { vizBooksLoaded=true; renderVizBooks(); }
+  if (name==='admin') {
+    // reload bin so admin has fresh data
+    if (adminUnlocked) fetchBin().then(d=>{ binData=d; if(!binData.members)binData.members={}; if(!binData.bookMeta)binData.bookMeta={}; renderAdminBookList(); }).catch(()=>{});
+  }
+}
+
+function switchSubTab(name) {
+  document.querySelectorAll('.sub-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sub-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('sub-tab-'+name).classList.add('active');
+  event.target.classList.add('active');
+  if (name==='ratings' && !vizRatingsLoaded) { vizRatingsLoaded=true; renderVizRatings(); }
+}
+
+document.getElementById('name-input').addEventListener('keydown', e=>{ if(e.key==='Enter') loadMember(); });
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+const MODALS = {
+  pearson: {
+    title: 'How taste similarity is calculated',
+    body: `
+      <p>Taste similarity uses the <strong>Pearson correlation coefficient</strong> — a standard statistical measure of linear correlation between two variables, here applied to two members' ratings.</p>
+
+      <p>For any pair of members A and B, we first find all books both have rated. We then compute:</p>
+
+      <div class="formula">        Σ (rᴬᵢ − r̄ᴬ)(rᴮᵢ − r̄ᴮ)
+ρ = ─────────────────────────────────────────
+    √[Σ(rᴬᵢ − r̄ᴬ)²] · √[Σ(rᴮᵢ − r̄ᴮ)²]</div>
+
+      <p>Where:</p>
+      <ul>
+        <li><strong>rᴬᵢ</strong> = member A's rating of book i</li>
+        <li><strong>r̄ᴬ</strong> = A's mean rating across shared books</li>
+        <li><strong>rᴮᵢ, r̄ᴮ</strong> = same for member B</li>
+        <li>The sums run over all books rated by <em>both</em> members</li>
+      </ul>
+
+      <p>The result ρ ∈ [−1, +1]:</p>
+      <ul>
+        <li><strong>+1</strong> — perfect agreement: they rank every book identically relative to their own means</li>
+        <li><strong>0</strong> — no linear relationship</li>
+        <li><strong>−1</strong> — perfect disagreement: when one rates a book above their mean, the other rates it below theirs</li>
+        <li><strong>?</strong> — fewer than 3 shared ratings; not enough data for a meaningful result</li>
+      </ul>
+
+      <p>An important nuance: Pearson measures <em>relative preference</em>, not absolute scores. A member who gives everything 4–5 and one who gives everything 1–2 can still have ρ = +1 if they agree on which books are better or worse than average. To see who's the harshest rater in absolute terms, check the <strong>Harshest critic</strong> card on the Dashboard tab.</p>
+
+      <p>A minimum of 3 shared books is required before we'll display a value — below that, the denominator is too unstable to be meaningful.</p>`
+  }
+};
+
+function openModal(key) {
+  const m = MODALS[key];
+  if (!m) return;
+  document.getElementById('modal-title').textContent = m.title;
+  document.getElementById('modal-body').innerHTML = m.body;
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-backdrop')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalDirect(); });
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────────
+const ADMIN_PW = 'ILoveJamesJoyce'; // yes you found it, very clever
+let adminUnlocked = false;
+
+function unlockAdmin() {
+  const val = document.getElementById('admin-pw-input').value;
+  if (val === ADMIN_PW) {
+    adminUnlocked = true;
+    document.getElementById('admin-lock').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    renderAdminBookList();
+  } else {
+    document.getElementById('admin-lock-err').textContent = 'Incorrect password.';
+    document.getElementById('admin-pw-input').value = '';
+  }
+}
+document.getElementById('admin-pw-input').addEventListener('keydown', e => { if (e.key === 'Enter') unlockAdmin(); });
+
+function renderAdminBookList() {
+  const list = document.getElementById('admin-book-list');
+  const books = binData.books || BOOKS;
+  list.innerHTML = books.map((b, i) => {
+    const meta = binData.bookMeta?.[b.title] || {};
+    const isbn = b.isbn || meta.isbn || '—';
+    return `
+      <div class="admin-book-row" onclick="toggleEditForm(${i})">
+        <span class="admin-book-num">${i+1}</span>
+        <div class="admin-book-info">
+          <div class="admin-book-title">${b.title}</div>
+          <div class="admin-book-meta">${b.author} · ${b.genre||'—'} · nom. ${b.nominator}${b.meetingDate ? ' · '+b.meetingDate : ''}</div>
+        </div>
+        <span class="admin-book-isbn">${isbn}</span>
+      </div>
+      <div class="edit-form" id="edit-form-${i}">
+        <div class="edit-row"><label>Title</label><input type="text" id="ef-title-${i}" value="${b.title.replace(/"/g,'&quot;')}" /></div>
+        <div class="edit-row"><label>Author</label><input type="text" id="ef-author-${i}" value="${b.author.replace(/"/g,'&quot;')}" /></div>
+        <div class="edit-row"><label>Genre</label><input type="text" id="ef-genre-${i}" value="${(b.genre||'').replace(/"/g,'&quot;')}" placeholder="e.g. Science Fiction" /></div>
+        <div class="edit-row"><label>Nominator</label><input type="text" id="ef-nom-${i}" value="${b.nominator}" /></div>
+        <div class="edit-row"><label>Meeting date</label><input type="text" id="ef-date-${i}" value="${b.meetingDate||''}" placeholder="YYYY-MM-DD" /></div>
+        <div class="edit-row"><label>ISBN</label><input type="text" id="ef-isbn-${i}" value="${b.isbn||''}" placeholder="First edition ISBN" /></div>
+        <div class="edit-row"><label>Status</label>
+          <select id="ef-status-${i}">
+            <option value="Finished"${(b.status||'Finished')==='Finished'?' selected':''}>Finished</option>
+            <option value="In progress"${b.status==='In progress'?' selected':''}>In progress</option>
+            <option value="Upcoming"${b.status==='Upcoming'?' selected':''}>Upcoming</option>
+          </select>
+        </div>
+        <div class="edit-actions">
+          <button class="save-edit-btn" onclick="saveEdit(${i}, event)">Save</button>
+          <button class="del-btn" onclick="deleteBook(${i}, event)">Delete</button>
+        </div>
+        <div class="status" id="ef-status-msg-${i}"></div>
+      </div>`;
+  }).join('');
+}
+
+function toggleEditForm(i) {
+  const form = document.getElementById(`edit-form-${i}`);
+  const isOpen = form.classList.contains('open');
+  document.querySelectorAll('.edit-form.open').forEach(f => f.classList.remove('open'));
+  if (!isOpen) form.classList.add('open');
+}
+
+async function saveEdit(i, e) {
+  e.stopPropagation();
+  const books = binData.books || [...BOOKS];
+  const oldTitle = books[i].title;
+  const newTitle = document.getElementById(`ef-title-${i}`).value.trim();
+  const isbn = document.getElementById(`ef-isbn-${i}`).value.trim();
+
+  books[i] = {
+    ...books[i],
+    title: newTitle,
+    author: document.getElementById(`ef-author-${i}`).value.trim(),
+    genre: document.getElementById(`ef-genre-${i}`).value.trim() || undefined,
+    nominator: document.getElementById(`ef-nom-${i}`).value.trim(),
+    meetingDate: document.getElementById(`ef-date-${i}`).value.trim() || null,
+    isbn: isbn || undefined,
+    status: document.getElementById(`ef-status-${i}`).value,
+  };
+
+  // if title changed, migrate ratings
+  if (oldTitle !== newTitle && binData.members) {
+    Object.keys(binData.members).forEach(m => {
+      if (binData.members[m][oldTitle] != null) {
+        binData.members[m][newTitle] = binData.members[m][oldTitle];
+        delete binData.members[m][oldTitle];
+      }
+    });
+  }
+
+  // if ISBN provided/changed, clear cached meta so it re-fetches
+  if (isbn && (!binData.bookMeta?.[newTitle] || binData.bookMeta[newTitle]?.isbn !== isbn)) {
+    if (!binData.bookMeta) binData.bookMeta = {};
+    binData.bookMeta[newTitle] = { isbn, coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` };
+  }
+
+  binData.books = books;
+  const msg = document.getElementById(`ef-status-msg-${i}`);
+  msg.textContent = 'Saving...'; msg.className = 'status';
+  try {
+    await updateBin(binData);
+    msg.textContent = 'Saved!'; msg.className = 'status ok';
+    renderAdminBookList();
+    // reset viz so they reload with new data
+    vizBooksLoaded = false; vizRatingsLoaded = false; dashLoaded = false;
+  } catch(err) { msg.textContent = 'Save failed.'; msg.className = 'status err'; }
+}
+
+async function deleteBook(i, e) {
+  e.stopPropagation();
+  const books = binData.books || [...BOOKS];
+  const title = books[i].title;
+  if (!confirm(`Delete "${title}"? This also removes all ratings for this book.`)) return;
+
+  books.splice(i, 1);
+  if (binData.members) {
+    Object.keys(binData.members).forEach(m => { delete binData.members[m][title]; });
+  }
+  binData.books = books;
+  try {
+    await updateBin(binData);
+    renderAdminBookList();
+    vizBooksLoaded = false; vizRatingsLoaded = false; dashLoaded = false;
+  } catch(err) { alert('Delete failed. Try again.'); }
+}
+
+async function addBook() {
+  const title = document.getElementById('ab-title').value.trim();
+  const author = document.getElementById('ab-author').value.trim();
+  const genre = document.getElementById('ab-genre').value.trim();
+  const nominator = document.getElementById('ab-nominator').value.trim();
+  const date = document.getElementById('ab-date').value.trim();
+  const isbn = document.getElementById('ab-isbn').value.trim();
+  const status = document.getElementById('ab-status').value;
+  const statusEl = document.getElementById('add-book-status');
+
+  if (!title || !author || !nominator) {
+    statusEl.textContent = 'Title, author and nominator are required.';
+    statusEl.className = 'status err'; return;
+  }
+
+  const books = binData.books || [...BOOKS];
+  if (books.find(b => b.title.toLowerCase() === title.toLowerCase())) {
+    statusEl.textContent = 'A book with that title already exists.';
+    statusEl.className = 'status err'; return;
+  }
+
+  const newBook = { title, author, genre: genre || undefined, nominator, meetingDate: date || null, status };
+  if (isbn) {
+    newBook.isbn = isbn;
+    if (!binData.bookMeta) binData.bookMeta = {};
+    binData.bookMeta[title] = { isbn, coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` };
+  }
+  books.push(newBook);
+  binData.books = books;
+
+  statusEl.textContent = 'Saving...'; statusEl.className = 'status';
+  try {
+    await updateBin(binData);
+    statusEl.textContent = `"${title}" added!`; statusEl.className = 'status ok';
+    ['ab-title','ab-author','ab-genre','ab-nominator','ab-date','ab-isbn'].forEach(id => document.getElementById(id).value = '');
+    renderAdminBookList();
+    vizBooksLoaded = false; vizRatingsLoaded = false; dashLoaded = false;
+  } catch(err) { statusEl.textContent = 'Save failed.'; statusEl.className = 'status err'; }
+}
+
+async function clearAllRatings() {
+  if (!confirm('This will permanently delete ALL ratings from everyone. Are you sure?')) return;
+  if (!confirm('Really? This cannot be undone.')) return;
+  binData.members = {};
+  const statusEl = document.getElementById('danger-status');
+  statusEl.textContent = 'Clearing...'; statusEl.className = 'status';
+  try {
+    await updateBin(binData);
+    statusEl.textContent = 'All ratings cleared.'; statusEl.className = 'status ok';
+    dashLoaded = false; vizRatingsLoaded = false;
+  } catch(err) { statusEl.textContent = 'Failed.'; statusEl.className = 'status err'; }
+}
+</script>
+<!-- Chart.js date adapter for timeline -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+</body>
+</html>
