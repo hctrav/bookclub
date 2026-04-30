@@ -1434,7 +1434,16 @@ async function refetchAllMeta() {
     btn.disabled = false; return;
   }
 
-  // Clear all cached meta so everything re-fetches
+  // Clear cached API data but preserve any manual overrides
+  const savedOverrides = {};
+  Object.entries(binData.bookMeta).forEach(([title, meta]) => {
+    if (meta.pagesOverride || meta.yearOverride) {
+      savedOverrides[title] = {
+        pagesOverride: meta.pagesOverride || null,
+        yearOverride:  meta.yearOverride  || null,
+      };
+    }
+  });
   binData.bookMeta = {};
   const books = binData.books || BOOKS;
   statusEl.textContent = `Fetching metadata for ${books.length} books...`;
@@ -1442,7 +1451,11 @@ async function refetchAllMeta() {
   for (let i = 0; i < books.length; i += 4) {
     const batch = books.slice(i, i+4);
     const results = await Promise.all(batch.map(b => fetchBookMeta(b).catch(()=>null)));
-    batch.forEach((b, j) => { binData.bookMeta[b.title] = results[j] || {}; });
+    batch.forEach((b, j) => {
+      const fresh = results[j] || {};
+      const saved = savedOverrides[b.title] || {};
+      binData.bookMeta[b.title] = { ...fresh, ...saved };
+    });
     statusEl.textContent = `Fetched ${Math.min(i+4, books.length)} / ${books.length}...`;
   }
 
