@@ -381,19 +381,34 @@ async function updateBin(data) {
 
 // ── OPEN LIBRARY ─────────────────────────────────────────────────────────────
 async function fetchBookMeta(book) {
+  // If we have an ISBN, query directly — much more reliable than title search
+  if (book.isbn) {
+    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${book.isbn}&format=json&jscmd=data`);
+    if (res.ok) {
+      const data = await res.json();
+      const entry = data[`ISBN:${book.isbn}`];
+      if (entry) {
+        return {
+          year:     entry.publish_date ? parseInt(entry.publish_date.slice(-4)) : null,
+          pages:    entry.number_of_pages || null,
+          isbn:     book.isbn,
+          coverUrl: `https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`,
+        };
+      }
+    }
+  }
+  // Fall back to title/author search
   const q = encodeURIComponent(`${book.title} ${book.author}`);
   const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=title,author_name,first_publish_year,isbn,number_of_pages_median,cover_i`);
   if (!res.ok) return null;
   const data = await res.json();
   if (!data.docs || !data.docs.length) return null;
-  // prefer exact title match
   const match = data.docs.find(d => d.title && d.title.toLowerCase().includes(book.title.toLowerCase().split(':')[0].toLowerCase())) || data.docs[0];
   const isbn = match.isbn ? match.isbn[0] : null;
   return {
-    year: match.first_publish_year || null,
-    pages: match.number_of_pages_median || null,
+    year:     match.first_publish_year || null,
+    pages:    match.number_of_pages_median || null,
     isbn,
-    coverId: match.cover_i || null,
     coverUrl: isbn
       ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`
       : match.cover_i
@@ -403,7 +418,12 @@ async function fetchBookMeta(book) {
 }
 
 async function ensureBookMeta() {
-  const missing = (binData.books||BOOKS).filter(b => !binData.bookMeta[b.title] || (!binData.bookMeta[b.title].year && !b.isbn));
+  const missing = (binData.books||BOOKS).filter(b => {
+    const meta = binData.bookMeta[b.title];
+    if (!meta) return true;                  // no entry at all
+    if (meta.pages == null || meta.year == null) return true;  // cleared by ISBN update
+    return false;
+  });
   if (!missing.length) return;
   // fetch in batches of 4 to be polite
   for (let i = 0; i < missing.length; i += 4) {
