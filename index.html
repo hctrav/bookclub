@@ -603,7 +603,12 @@ async function renderDash() {
     return;
   }
 
-  const ratedBooks = (binData.books||BOOKS).filter(b=>bookRatings(b.title).length>0);
+  // Merge genre from hardcoded BOOKS for any book missing it in binData
+  const BOOKS_BY_TITLE = Object.fromEntries(BOOKS.map(b=>[b.title, b]));
+  const ratedBooks = (binData.books||BOOKS).map(b=>({
+    ...b,
+    genre: b.genre || BOOKS_BY_TITLE[b.title]?.genre || ''
+  })).filter(b=>bookRatings(b.title).length>0);
   const bookAvgs = ratedBooks.map(b=>({book:b,a:avg(bookRatings(b.title)),vals:bookRatings(b.title)}));
   const sorted = [...bookAvgs].sort((a,b)=>b.a-a.a);
   const highest=sorted[0], lowest=sorted[sorted.length-1];
@@ -664,9 +669,10 @@ async function renderDash() {
     <span class="rbar-val">${a.toFixed(2)}</span></div></div>`).join('');
 
   // genre chart
-  const genres = [...new Set((binData.books||BOOKS).map(b=>b.genre).filter(Boolean))];
+  const allBooksWithGenre = (binData.books||BOOKS).map(b=>({...b, genre: b.genre||BOOKS_BY_TITLE[b.title]?.genre||''}));
+  const genres = [...new Set(allBooksWithGenre.map(b=>b.genre).filter(Boolean))];
   const gData = genres.map(g => {
-    const vals = (binData.books||BOOKS).filter(b=>b.genre===g).flatMap(b=>bookRatings(b.title));
+    const vals = allBooksWithGenre.filter(b=>b.genre===g).flatMap(b=>bookRatings(b.title));
     return { g, a: avg(vals) };
   }).filter(x=>x.a!=null).sort((a,b)=>b.a-a.a);
   destroyChart('genre-chart');
@@ -1217,15 +1223,15 @@ function renderAdminBookList() {
         <div class="edit-row"><label>ISBN</label><input type="text" id="ef-isbn-${i}" value="${b.isbn||''}" placeholder="First edition ISBN" /></div>
         <div class="override-row">
           <label class="main">Pages</label>
-          <div class="api-val" id="ef-pages-api-${i}">${meta.pages ? 'API: '+meta.pages+' pp' : 'API: not found'}</div>
+          <div class="api-val" id="ef-pages-api-${i}">${meta.pages ? 'API value: '+meta.pages+' pp' : 'API value: not found'}</div>
           <label class="override-toggle"><input type="checkbox" id="ef-pages-chk-${i}" onchange="toggleOverride('pages',${i})" ${meta.pagesOverride?'checked':''}> Manual override</label>
-          <input type="text" class="override-input${meta.pagesOverride?' show':''}" id="ef-pages-${i}" value="${meta.pagesOverride||meta.pages||''}" placeholder="e.g. 312" />
+          <input type="text" class="override-input${meta.pagesOverride?' show':''}" id="ef-pages-${i}" value="${meta.pagesOverride||''}" placeholder="e.g. 312" />
         </div>
         <div class="override-row">
           <label class="main">Publication year</label>
-          <div class="api-val" id="ef-year-api-${i}">${meta.year ? 'API: '+meta.year : 'API: not found'}</div>
+          <div class="api-val" id="ef-year-api-${i}">${meta.year ? 'API value: '+meta.year : 'API value: not found'}</div>
           <label class="override-toggle"><input type="checkbox" id="ef-year-chk-${i}" onchange="toggleOverride('year',${i})" ${meta.yearOverride?'checked':''}> Manual override</label>
-          <input type="text" class="override-input${meta.yearOverride?' show':''}" id="ef-year-${i}" value="${meta.yearOverride||meta.year||''}" placeholder="e.g. 1972" />
+          <input type="text" class="override-input${meta.yearOverride?' show':''}" id="ef-year-${i}" value="${meta.yearOverride||''}" placeholder="e.g. 1972" />
         </div>
         <div class="edit-row"><label>Status</label>
           <select id="ef-status-${i}">
