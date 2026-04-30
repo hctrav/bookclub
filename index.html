@@ -608,6 +608,8 @@ async function renderDash() {
     <div id="ml"></div>
     <p class="section-head" style="margin-top:1.5rem;">All books — average rating</p>
     <div id="rb"></div>
+    <p class="section-head" style="margin-top:1.5rem;">Ratings by genre</p>
+    <div class="chart-wrap" style="height:${Math.max(200, [...new Set((binData.books||BOOKS).map(b=>b.genre).filter(Boolean))].length*44+80)}px;"><canvas id="genre-chart"></canvas></div>
     <p class="section-head" style="margin-top:1.5rem;">Ratings by nominator</p>
     <div class="chart-wrap" style="height:${Math.max(200,members.length*45+80)}px;"><canvas id="nom-chart"></canvas></div>`;
 
@@ -649,6 +651,21 @@ async function renderDash() {
     <div class="rbar-wrap"><div class="rbar-label" title="${book.title}">${book.title}</div>
     <div class="rbar-row"><div class="rbar" style="width:${Math.round(a/5*300)}px;background:${pcolor(book.nominator)};"></div>
     <span class="rbar-val">${a.toFixed(2)}</span></div></div>`).join('');
+
+  // genre chart
+  const genres = [...new Set((binData.books||BOOKS).map(b=>b.genre).filter(Boolean))];
+  const gData = genres.map(g => {
+    const vals = (binData.books||BOOKS).filter(b=>b.genre===g).flatMap(b=>bookRatings(b.title));
+    return { g, a: avg(vals) };
+  }).filter(x=>x.a!=null).sort((a,b)=>b.a-a.a);
+  destroyChart('genre-chart');
+  if (gData.length) {
+    chartInstances['genre-chart'] = new Chart(document.getElementById('genre-chart'),{
+      type:'bar',
+      data:{labels:gData.map(x=>x.g),datasets:[{data:gData.map(x=>+x.a.toFixed(2)),backgroundColor:gData.map(x=>gcolor(x.g)),borderWidth:0,borderRadius:4}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>`avg ${i.raw}`}}},scales:{x:{min:0,max:6,title:{display:true,text:'Average rating',font:{size:12},color:'var(--text2)'},ticks:{stepSize:1,callback:v=>v<=5?v:null},grid:{color:'rgba(128,128,128,0.08)'}},y:{grid:{display:false}}}}
+    });
+  }
 
   // nominator chart
   const noms = [...new Set((binData.books||BOOKS).map(b=>b.nominator))];
