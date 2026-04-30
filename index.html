@@ -263,6 +263,10 @@ input[type=text]:focus { border-color: var(--text2); }
           <input type="text" id="ab-isbn" placeholder="e.g. 0441013597" />
         </div>
         <div class="admin-row">
+          <label>Pages <span style="font-weight:400;color:var(--text3);">(optional)</span></label>
+          <input type="text" id="ab-pages" placeholder="e.g. 312" />
+        </div>
+        <div class="admin-row">
           <label>Status</label>
           <select id="ab-status">
             <option value="Finished">Finished</option>
@@ -467,8 +471,10 @@ async function fetchBookMeta(book) {
 async function ensureBookMeta() {
   const missing = (binData.books||BOOKS).filter(b => {
     const meta = binData.bookMeta[b.title];
-    if (!meta) return true;                  // no entry at all
-    if (meta.pages == null || meta.year == null) return true;  // cleared by ISBN update
+    if (!meta) return true;
+    // if pages are manually overridden, only re-fetch if year is also missing
+    if (meta.pagesOverride) return meta.year == null;
+    if (meta.pages == null || meta.year == null) return true;
     return false;
   });
   if (!missing.length) return;
@@ -615,10 +621,8 @@ async function renderDash() {
 
   const books = binData.books || BOOKS;
   const totalPages = books.reduce((sum, b) => {
-    const isbn = b.isbn;
     const meta = binData.bookMeta?.[b.title] || {};
-    const pages = (isbn && meta.pages) ? meta.pages : meta.pages || 0;
-    return sum + pages;
+    return sum + (meta.pagesOverride || meta.pages || 0);
   }, 0);
 
   document.getElementById('sg').innerHTML = `
@@ -691,7 +695,7 @@ async function renderVizBooks() {
   content.innerHTML = '<div class="loading"><span class="spinner"></span>Fetching book data...</div>';
   await ensureBookMeta();
 
-  const booksWithMeta = (binData.books||BOOKS).map(b=>({...b, meta: binData.bookMeta[b.title]||{}, coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : (binData.bookMeta[b.title]||{}).coverUrl }));
+  const booksWithMeta = (binData.books||BOOKS).map(b=>{ const m=binData.bookMeta[b.title]||{}; const ep=m.pagesOverride||m.pages||null; return {...b, meta:{...m,pages:ep}, coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : m.coverUrl }; });
 
   // meeting gaps
   const dated = (binData.books||BOOKS).filter(b=>b.meetingDate).sort((a,b)=>new Date(a.meetingDate)-new Date(b.meetingDate));
@@ -1204,6 +1208,7 @@ function renderAdminBookList() {
         <div class="edit-row"><label>Nominator</label><input type="text" id="ef-nom-${i}" value="${b.nominator}" /></div>
         <div class="edit-row"><label>Meeting date</label><input type="text" id="ef-date-${i}" value="${b.meetingDate||''}" placeholder="YYYY-MM-DD" /></div>
         <div class="edit-row"><label>ISBN</label><input type="text" id="ef-isbn-${i}" value="${b.isbn||''}" placeholder="First edition ISBN" /></div>
+        <div class="edit-row"><label>Pages <span style="font-weight:400;color:var(--text3);">(overrides API)</span></label><input type="text" id="ef-pages-${i}" value="${(binData.bookMeta?.[b.title]?.pagesOverride)||''}" placeholder="e.g. 312" /></div>
         <div class="edit-row"><label>Status</label>
           <select id="ef-status-${i}">
             <option value="Finished"${(b.status||'Finished')==='Finished'?' selected':''}>Finished</option>
@@ -1239,6 +1244,8 @@ async function saveEdit(i, e) {
   const newNom      = document.getElementById(`ef-nom-${i}`).value.trim();
   const newDate     = document.getElementById(`ef-date-${i}`).value.trim();
   const newIsbn     = document.getElementById(`ef-isbn-${i}`).value.trim();
+  const newPagesRaw = document.getElementById(`ef-pages-${i}`).value.trim();
+  const newPages    = newPagesRaw ? parseInt(newPagesRaw) : null;
   const newStatus   = document.getElementById(`ef-status-${i}`).value;
 
   // Always fetch fresh to avoid clobbering concurrent changes
@@ -1286,17 +1293,19 @@ async function saveEdit(i, e) {
     }
   }
 
-  // If ISBN provided/changed, update coverUrl but preserve cached pages/year
-  if (newIsbn) {
-    const existingMeta = binData.bookMeta[newTitle || oldTitle] || {};
-    const isbnChanged  = existingMeta.isbn !== newIsbn;
-    binData.bookMeta[newTitle || oldTitle] = {
-      ...existingMeta,
+  // Update bookMeta: ISBN, cover, pagesOverride
+  const existingMeta = binData.bookMeta[newTitle || oldTitle] || {};
+  const isbnChanged  = newIsbn && existingMeta.isbn !== newIsbn;
+  binData.bookMeta[newTitle || oldTitle] = {
+    ...existingMeta,
+    ...(newIsbn ? {
       isbn: newIsbn,
       coverUrl: `https://covers.openlibrary.org/b/isbn/${newIsbn}-M.jpg`,
       ...(isbnChanged ? { pages: null, year: null } : {}),
-    };
-  }
+    } : {}),
+    ...(newPages != null ? { pagesOverride: newPages } : {}),
+    ...(newPages == null && 'pagesOverride' in existingMeta ? { pagesOverride: null } : {}),
+  };
 
   try {
     await updateBin(binData);
@@ -1333,6 +1342,8 @@ async function addBook() {
   const nominator = document.getElementById('ab-nominator').value.trim();
   const date = document.getElementById('ab-date').value.trim();
   const isbn = document.getElementById('ab-isbn').value.trim();
+  const pagesRaw = document.getElementById('ab-pages').value.trim();
+  const pages = pagesRaw ? parseInt(pagesRaw) : null;
   const status = document.getElementById('ab-status').value;
   const statusEl = document.getElementById('add-book-status');
 
@@ -1352,10 +1363,13 @@ async function addBook() {
   }
 
   const newBook = { title, author, genre: genre || undefined, nominator, meetingDate: date || null, status };
-  if (isbn) {
-    newBook.isbn = isbn;
+  if (isbn || pages) {
     if (!binData.bookMeta) binData.bookMeta = {};
-    binData.bookMeta[title] = { isbn, coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` };
+    binData.bookMeta[title] = {
+      ...(binData.bookMeta[title] || {}),
+      ...(isbn ? { isbn, coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` } : {}),
+      ...(pages ? { pagesOverride: pages } : {}),
+    };
   }
   books.push(newBook);
   binData.books = books;
@@ -1364,7 +1378,7 @@ async function addBook() {
   try {
     await updateBin(binData);
     statusEl.textContent = `"${title}" added!`; statusEl.className = 'status ok';
-    ['ab-title','ab-author','ab-genre','ab-nominator','ab-date','ab-isbn'].forEach(id => document.getElementById(id).value = '');
+    ['ab-title','ab-author','ab-genre','ab-nominator','ab-date','ab-isbn','ab-pages'].forEach(id => document.getElementById(id).value = '');
     renderAdminBookList();
     vizBooksLoaded = false; vizRatingsLoaded = false; dashLoaded = false;
   } catch(err) { statusEl.textContent = 'Save failed.'; statusEl.className = 'status err'; }
