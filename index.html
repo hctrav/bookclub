@@ -1145,7 +1145,14 @@ function toggleEditForm(i) {
 
 async function saveEdit(i, e) {
   e.stopPropagation();
-  const books = binData.books || [...BOOKS];
+  const msg = document.getElementById(`ef-status-msg-${i}`);
+  msg.textContent = 'Saving...'; msg.className = 'status';
+
+  // always fetch fresh before writing to avoid clobbering concurrent changes
+  try { binData = await fetchBin(); if(!binData.members)binData.members={}; if(!binData.bookMeta)binData.bookMeta={}; if(!binData.books)binData.books=[...BOOKS]; }
+  catch(e) { msg.textContent = 'Fetch failed.'; msg.className = 'status err'; return; }
+
+  const books = binData.books;
   const oldTitle = books[i].title;
   const newTitle = document.getElementById(`ef-title-${i}`).value.trim();
   const isbn = document.getElementById(`ef-isbn-${i}`).value.trim();
@@ -1161,30 +1168,38 @@ async function saveEdit(i, e) {
     status: document.getElementById(`ef-status-${i}`).value,
   };
 
-  // if title changed, migrate ratings
-  if (oldTitle !== newTitle && binData.members) {
+  // if title changed, migrate ratings and bookMeta
+  if (oldTitle !== newTitle) {
     Object.keys(binData.members).forEach(m => {
       if (binData.members[m][oldTitle] != null) {
         binData.members[m][newTitle] = binData.members[m][oldTitle];
         delete binData.members[m][oldTitle];
       }
     });
+    if (binData.bookMeta[oldTitle]) {
+      binData.bookMeta[newTitle] = binData.bookMeta[oldTitle];
+      delete binData.bookMeta[oldTitle];
+    }
   }
 
-  // if ISBN provided/changed, clear cached meta so it re-fetches
-  if (isbn && (!binData.bookMeta?.[newTitle] || binData.bookMeta[newTitle]?.isbn !== isbn)) {
-    if (!binData.bookMeta) binData.bookMeta = {};
-    binData.bookMeta[newTitle] = { isbn, coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg` };
+  // if ISBN provided/changed, update it but PRESERVE existing pages/year/etc
+  if (isbn) {
+    const existing = binData.bookMeta[newTitle] || {};
+    const isbnChanged = existing.isbn !== isbn;
+    binData.bookMeta[newTitle] = {
+      ...existing,
+      isbn,
+      coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`,
+      // if ISBN changed, clear cached pages/year so they re-fetch from new ISBN
+      ...(isbnChanged ? { pages: null, year: null } : {})
+    };
   }
 
   binData.books = books;
-  const msg = document.getElementById(`ef-status-msg-${i}`);
-  msg.textContent = 'Saving...'; msg.className = 'status';
   try {
     await updateBin(binData);
     msg.textContent = 'Saved!'; msg.className = 'status ok';
     renderAdminBookList();
-    // reset viz so they reload with new data
     vizBooksLoaded = false; vizRatingsLoaded = false; dashLoaded = false;
   } catch(err) { msg.textContent = 'Save failed.'; msg.className = 'status err'; }
 }
@@ -1194,6 +1209,8 @@ async function deleteBook(i, e) {
   const books = binData.books || [...BOOKS];
   const title = books[i].title;
   if (!confirm(`Delete "${title}"? This also removes all ratings for this book.`)) return;
+  try { binData = await fetchBin(); if(!binData.members)binData.members={}; if(!binData.bookMeta)binData.bookMeta={}; if(!binData.books)binData.books=[...BOOKS]; }
+  catch(e) { alert('Could not fetch latest data. Try again.'); return; }
 
   books.splice(i, 1);
   if (binData.members) {
@@ -1222,7 +1239,11 @@ async function addBook() {
     statusEl.className = 'status err'; return;
   }
 
-  const books = binData.books || [...BOOKS];
+  // fetch fresh before writing
+  try { binData = await fetchBin(); if(!binData.members)binData.members={}; if(!binData.bookMeta)binData.bookMeta={}; if(!binData.books)binData.books=[...BOOKS]; }
+  catch(e) { statusEl.textContent = 'Could not fetch latest data. Try again.'; statusEl.className = 'status err'; return; }
+
+  const books = binData.books;
   if (books.find(b => b.title.toLowerCase() === title.toLowerCase())) {
     statusEl.textContent = 'A book with that title already exists.';
     statusEl.className = 'status err'; return;
