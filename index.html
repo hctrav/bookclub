@@ -158,7 +158,13 @@ input[type=text]:focus { border-color: var(--text2); }
 .admin-book-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .admin-book-meta { font-size: 11px; color: var(--text2); margin-top: 1px; }
 .admin-book-isbn { font-size: 11px; color: var(--text3); font-family: monospace; }
-.edit-form { background: var(--bg2); border-radius: var(--radius-lg); padding: 14px; margin: 4px 0 8px; display: none; flex-direction: column; gap: 8px; }
+.override-row { display: flex; flex-direction: column; gap: 4px; }
+.override-row label.main { font-size: 12px; font-weight: 500; color: var(--text2); }
+.override-toggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); cursor: pointer; }
+.override-toggle input[type=checkbox] { cursor: pointer; }
+.override-input { margin-top: 4px; display: none; }
+.override-input.show { display: block; }
+.api-val { font-size: 12px; color: var(--text3); font-style: italic; margin-top: 2px; }
 .edit-form.open { display: flex; }
 .edit-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .edit-row label { font-size: 11px; color: var(--text2); min-width: 70px; }
@@ -472,10 +478,9 @@ async function ensureBookMeta() {
   const missing = (binData.books||BOOKS).filter(b => {
     const meta = binData.bookMeta[b.title];
     if (!meta) return true;
-    // if pages are manually overridden, only re-fetch if year is also missing
-    if (meta.pagesOverride) return meta.year == null;
-    if (meta.pages == null || meta.year == null) return true;
-    return false;
+    const hasPages = meta.pagesOverride || meta.pages;
+    const hasYear  = meta.yearOverride  || meta.year;
+    return !hasPages || !hasYear;
   });
   if (!missing.length) return;
   // fetch in batches of 4 to be polite
@@ -529,6 +534,8 @@ function renderSurvey() {
   books.forEach((b, i) => {
     const cur = myRatings[b.title] || 0;
     const meta = binData.bookMeta?.[b.title] || {};
+    const effectiveYear = meta.yearOverride || meta.year || null;
+    const effectivePages = meta.pagesOverride || meta.pages || null;
     const coverUrl = b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : meta.coverUrl;
     const row = document.createElement('div');
     row.className = 'book-row';
@@ -538,7 +545,7 @@ function renderSurvey() {
         : `<div class="book-cover-placeholder"></div>`}
       <div class="book-info">
         <div class="book-title">${b.title}</div>
-        <div class="book-meta">${b.author}${b.genre?` · <span style="color:${gcolor(b.genre||'')};">${b.genre}</span>`:''}${meta.year?' · '+meta.year:''}${meta.pages?' · '+meta.pages+' pp':''}</div>
+        <div class="book-meta">${b.author}${b.genre?` · <span style="color:${gcolor(b.genre||'')};">${b.genre}</span>`:''}${effectiveYear?' · '+effectiveYear:''}${effectivePages?' · '+effectivePages+' pp':''}</div>
       </div>
       <div class="stars" id="stars-${i}">
         ${[1,2,3,4,5].map(s=>`<span class="star${s<=cur?' lit':''}" data-idx="${i}" data-val="${s}">&#9733;</span>`).join('')}
@@ -653,7 +660,7 @@ async function renderDash() {
 
   document.getElementById('rb').innerHTML = sorted.map(({book,a})=>`
     <div class="rbar-wrap"><div class="rbar-label" title="${book.title}">${book.title}</div>
-    <div class="rbar-row"><div class="rbar" style="width:${Math.round(a/5*300)}px;background:${pcolor(book.nominator)};"></div>
+    <div class="rbar-row"><div class="rbar" style="width:${Math.round(a/5*300)}px;background:${gcolor(book.genre||'')};"></div>
     <span class="rbar-val">${a.toFixed(2)}</span></div></div>`).join('');
 
   // genre chart
@@ -695,7 +702,7 @@ async function renderVizBooks() {
   content.innerHTML = '<div class="loading"><span class="spinner"></span>Fetching book data...</div>';
   await ensureBookMeta();
 
-  const booksWithMeta = (binData.books||BOOKS).map(b=>{ const m=binData.bookMeta[b.title]||{}; const ep=m.pagesOverride||m.pages||null; return {...b, meta:{...m,pages:ep}, coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : m.coverUrl }; });
+  const booksWithMeta = (binData.books||BOOKS).map(b=>{ const m=binData.bookMeta[b.title]||{}; const ep=m.pagesOverride||m.pages||null; const ey=m.yearOverride||m.year||null; return {...b, meta:{...m,pages:ep,year:ey}, coverUrl: b.isbn ? `https://covers.openlibrary.org/b/isbn/${b.isbn}-M.jpg` : m.coverUrl }; });
 
   // meeting gaps
   const dated = (binData.books||BOOKS).filter(b=>b.meetingDate).sort((a,b)=>new Date(a.meetingDate)-new Date(b.meetingDate));
@@ -1208,7 +1215,18 @@ function renderAdminBookList() {
         <div class="edit-row"><label>Nominator</label><input type="text" id="ef-nom-${i}" value="${b.nominator}" /></div>
         <div class="edit-row"><label>Meeting date</label><input type="text" id="ef-date-${i}" value="${b.meetingDate||''}" placeholder="YYYY-MM-DD" /></div>
         <div class="edit-row"><label>ISBN</label><input type="text" id="ef-isbn-${i}" value="${b.isbn||''}" placeholder="First edition ISBN" /></div>
-        <div class="edit-row"><label>Pages <span style="font-weight:400;color:var(--text3);">(overrides API)</span></label><input type="text" id="ef-pages-${i}" value="${(binData.bookMeta?.[b.title]?.pagesOverride)||''}" placeholder="e.g. 312" /></div>
+        <div class="override-row">
+          <label class="main">Pages</label>
+          <div class="api-val" id="ef-pages-api-${i}">${meta.pages ? 'API: '+meta.pages+' pp' : 'API: not found'}</div>
+          <label class="override-toggle"><input type="checkbox" id="ef-pages-chk-${i}" onchange="toggleOverride('pages',${i})" ${meta.pagesOverride?'checked':''}> Manual override</label>
+          <input type="text" class="override-input${meta.pagesOverride?' show':''}" id="ef-pages-${i}" value="${meta.pagesOverride||meta.pages||''}" placeholder="e.g. 312" />
+        </div>
+        <div class="override-row">
+          <label class="main">Publication year</label>
+          <div class="api-val" id="ef-year-api-${i}">${meta.year ? 'API: '+meta.year : 'API: not found'}</div>
+          <label class="override-toggle"><input type="checkbox" id="ef-year-chk-${i}" onchange="toggleOverride('year',${i})" ${meta.yearOverride?'checked':''}> Manual override</label>
+          <input type="text" class="override-input${meta.yearOverride?' show':''}" id="ef-year-${i}" value="${meta.yearOverride||meta.year||''}" placeholder="e.g. 1972" />
+        </div>
         <div class="edit-row"><label>Status</label>
           <select id="ef-status-${i}">
             <option value="Finished"${(b.status||'Finished')==='Finished'?' selected':''}>Finished</option>
@@ -1223,6 +1241,13 @@ function renderAdminBookList() {
         <div class="status" id="ef-status-msg-${i}"></div>
       </div>`;
   }).join('');
+}
+
+function toggleOverride(field, i) {
+  const chk = document.getElementById(`ef-${field}-chk-${i}`);
+  const inp = document.getElementById(`ef-${field}-${i}`);
+  inp.classList.toggle('show', chk.checked);
+  if (chk.checked) inp.focus();
 }
 
 function toggleEditForm(i) {
@@ -1244,8 +1269,12 @@ async function saveEdit(i, e) {
   const newNom      = document.getElementById(`ef-nom-${i}`).value.trim();
   const newDate     = document.getElementById(`ef-date-${i}`).value.trim();
   const newIsbn     = document.getElementById(`ef-isbn-${i}`).value.trim();
-  const newPagesRaw = document.getElementById(`ef-pages-${i}`).value.trim();
+  const pagesChk    = document.getElementById(`ef-pages-chk-${i}`)?.checked;
+  const newPagesRaw = pagesChk ? document.getElementById(`ef-pages-${i}`).value.trim() : null;
   const newPages    = newPagesRaw ? parseInt(newPagesRaw) : null;
+  const yearChk     = document.getElementById(`ef-year-chk-${i}`)?.checked;
+  const newYearRaw  = yearChk ? document.getElementById(`ef-year-${i}`).value.trim() : null;
+  const newYear     = newYearRaw ? parseInt(newYearRaw) : null;
   const newStatus   = document.getElementById(`ef-status-${i}`).value;
 
   // Always fetch fresh to avoid clobbering concurrent changes
@@ -1293,7 +1322,7 @@ async function saveEdit(i, e) {
     }
   }
 
-  // Update bookMeta: ISBN, cover, pagesOverride
+  // Update bookMeta: ISBN, cover, pagesOverride, yearOverride
   const existingMeta = binData.bookMeta[newTitle || oldTitle] || {};
   const isbnChanged  = newIsbn && existingMeta.isbn !== newIsbn;
   binData.bookMeta[newTitle || oldTitle] = {
@@ -1303,8 +1332,8 @@ async function saveEdit(i, e) {
       coverUrl: `https://covers.openlibrary.org/b/isbn/${newIsbn}-M.jpg`,
       ...(isbnChanged ? { pages: null, year: null } : {}),
     } : {}),
-    ...(newPages != null ? { pagesOverride: newPages } : {}),
-    ...(newPages == null && 'pagesOverride' in existingMeta ? { pagesOverride: null } : {}),
+    pagesOverride: pagesChk && newPages ? newPages : null,
+    yearOverride:  yearChk  && newYear  ? newYear  : null,
   };
 
   try {
