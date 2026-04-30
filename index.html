@@ -279,6 +279,12 @@ input[type=text]:focus { border-color: var(--text2); }
       <div id="admin-book-list"></div>
 
       <hr class="divider">
+      <p class="section-head" style="color:var(--blue);">Maintenance</p>
+      <p class="note" style="margin-bottom:0.75rem;">Force a fresh metadata fetch for all books (covers, page counts, publication years). Use this if covers or page counts are missing.</p>
+      <button class="btn" style="background:var(--blue);" onclick="refetchAllMeta()">Re-fetch all metadata</button>
+      <div class="status" id="refetch-status"></div>
+
+      <hr class="divider">
       <p class="section-head" style="color:var(--red-text);">Danger zone</p>
       <p class="note" style="margin-bottom:0.75rem;">Clear all ratings data from the shared bin. This cannot be undone.</p>
       <button class="btn" style="background:#A32D2D;" onclick="clearAllRatings()">Clear all ratings</button>
@@ -381,40 +387,81 @@ async function updateBin(data) {
 
 // ── OPEN LIBRARY ─────────────────────────────────────────────────────────────
 async function fetchBookMeta(book) {
-  // If we have an ISBN, query directly — much more reliable than title search
-  if (book.isbn) {
-    const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${book.isbn}&format=json&jscmd=data`);
-    if (res.ok) {
-      const data = await res.json();
-      const entry = data[`ISBN:${book.isbn}`];
-      if (entry) {
+  // ── 1. Google Books (primary) ──────────────────────────────────────────────
+  try {
+    // Prefer ISBN query if we have one — most precise
+    const gbQuery = book.isbn
+      ? `isbn:${book.isbn}`
+      : `intitle:${encodeURIComponent(book.title)}+inauthor:${encodeURIComponent(book.author.split(' ').slice(-1)[0])}`;
+    const gbRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${gbQuery}&maxResults=3`);
+    if (gbRes.ok) {
+      const gbData = await gbRes.json();
+      if (gbData.totalItems > 0) {
+        // prefer exact title match
+        const vol = gbData.items.find(v =>
+          v.volumeInfo?.title?.toLowerCase().includes(book.title.toLowerCase().split(':')[0].trim().toLowerCase())
+        ) || gbData.items[0];
+        const vi = vol.volumeInfo || {};
+        // Google Books thumbnail — upgrade from thumbnail to larger size
+        const gbCover = vi.imageLinks
+          ? (vi.imageLinks.thumbnail || vi.imageLinks.smallThumbnail || '').replace('zoom=1','zoom=2').replace('http:','https:')
+          : null;
+        // year from publishedDate e.g. "1961" or "1961-03-01"
+        const year = vi.publishedDate ? parseInt(vi.publishedDate.slice(0,4)) : null;
+        const pages = vi.pageCount || null;
+        if (year || pages || gbCover) {
+          return {
+            year,
+            pages,
+            isbn: book.isbn || (vi.industryIdentifiers?.find(x=>x.type==='ISBN_13')?.identifier)
+                            || (vi.industryIdentifiers?.find(x=>x.type==='ISBN_10')?.identifier) || null,
+            coverUrl: gbCover,
+            source: 'google'
+          };
+        }
+      }
+    }
+  } catch(e) { /* fall through to Open Library */ }
+
+  // ── 2. Open Library (fallback) ────────────────────────────────────────────
+  try {
+    if (book.isbn) {
+      const olRes = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${book.isbn}&format=json&jscmd=data`);
+      if (olRes.ok) {
+        const olData = await olRes.json();
+        const entry = olData[`ISBN:${book.isbn}`];
+        if (entry) {
+          return {
+            year:     entry.publish_date ? parseInt(entry.publish_date.slice(-4)) : null,
+            pages:    entry.number_of_pages || null,
+            isbn:     book.isbn,
+            coverUrl: entry.cover?.large || entry.cover?.medium || `https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`,
+            source:   'openlibrary'
+          };
+        }
+      }
+    }
+    // title search fallback
+    const q = encodeURIComponent(`${book.title} ${book.author}`);
+    const srRes = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=title,first_publish_year,isbn,number_of_pages_median,cover_i`);
+    if (srRes.ok) {
+      const srData = await srRes.json();
+      if (srData.docs?.length) {
+        const match = srData.docs.find(d => d.title?.toLowerCase().includes(book.title.toLowerCase().split(':')[0].trim().toLowerCase())) || srData.docs[0];
+        const isbn = match.isbn?.[0] || null;
         return {
-          year:     entry.publish_date ? parseInt(entry.publish_date.slice(-4)) : null,
-          pages:    entry.number_of_pages || null,
-          isbn:     book.isbn,
-          coverUrl: `https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`,
+          year:     match.first_publish_year || null,
+          pages:    match.number_of_pages_median || null,
+          isbn,
+          coverUrl: isbn ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`
+                         : match.cover_i ? `https://covers.openlibrary.org/b/id/${match.cover_i}-M.jpg` : null,
+          source:   'openlibrary'
         };
       }
     }
-  }
-  // Fall back to title/author search
-  const q = encodeURIComponent(`${book.title} ${book.author}`);
-  const res = await fetch(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=title,author_name,first_publish_year,isbn,number_of_pages_median,cover_i`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  if (!data.docs || !data.docs.length) return null;
-  const match = data.docs.find(d => d.title && d.title.toLowerCase().includes(book.title.toLowerCase().split(':')[0].toLowerCase())) || data.docs[0];
-  const isbn = match.isbn ? match.isbn[0] : null;
-  return {
-    year:     match.first_publish_year || null,
-    pages:    match.number_of_pages_median || null,
-    isbn,
-    coverUrl: isbn
-      ? `https://covers.openlibrary.org/b/isbn/${isbn}-M.jpg`
-      : match.cover_i
-        ? `https://covers.openlibrary.org/b/id/${match.cover_i}-M.jpg`
-        : null
-  };
+  } catch(e) { /* give up */ }
+
+  return null;
 }
 
 async function ensureBookMeta() {
@@ -1304,6 +1351,44 @@ async function addBook() {
     renderAdminBookList();
     vizBooksLoaded = false; vizRatingsLoaded = false; dashLoaded = false;
   } catch(err) { statusEl.textContent = 'Save failed.'; statusEl.className = 'status err'; }
+}
+
+async function refetchAllMeta() {
+  const btn = event.target;
+  const statusEl = document.getElementById('refetch-status');
+  btn.disabled = true;
+  statusEl.className = 'status';
+
+  try {
+    binData = await fetchBin();
+    if (!binData.bookMeta) binData.bookMeta = {};
+    if (!binData.books) binData.books = BOOKS.map(b=>({...b}));
+  } catch(e) {
+    statusEl.textContent = 'Fetch failed.'; statusEl.className = 'status err';
+    btn.disabled = false; return;
+  }
+
+  // Clear all cached meta so everything re-fetches
+  binData.bookMeta = {};
+  const books = binData.books || BOOKS;
+  statusEl.textContent = `Fetching metadata for ${books.length} books...`;
+
+  for (let i = 0; i < books.length; i += 4) {
+    const batch = books.slice(i, i+4);
+    const results = await Promise.all(batch.map(b => fetchBookMeta(b).catch(()=>null)));
+    batch.forEach((b, j) => { binData.bookMeta[b.title] = results[j] || {}; });
+    statusEl.textContent = `Fetched ${Math.min(i+4, books.length)} / ${books.length}...`;
+  }
+
+  try {
+    await updateBin(binData);
+    statusEl.textContent = `Done! Metadata updated for ${books.length} books.`;
+    statusEl.className = 'status ok';
+    vizBooksLoaded = false; dashLoaded = false;
+  } catch(e) {
+    statusEl.textContent = 'Save failed.'; statusEl.className = 'status err';
+  }
+  btn.disabled = false;
 }
 
 async function clearAllRatings() {
